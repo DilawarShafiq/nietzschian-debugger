@@ -7,16 +7,30 @@
   "bin": {
     "nietzschian": "dist/cli.js"
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
+    "prepublishOnly": "npm run build && npm test",
     "dev": "node --loader ts-node/esm src/cli.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src/"
   },
-  "keywords": ["debugging", "education", "nietzsche", "philosophy", "developer-tools", "ai", "learning", "critical-thinking"],
+  "keywords": ["debugging", "education", "nietzsche", "philosophy", "developer-tools", "ai", "learning", "critical-thinking", "cli", "socratic", "anthropic", "claude"],
   "author": "Dilawar Gopang",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DilawarShafiq/nietzschian-debugger.git"
+  },
+  "homepage": "https://github.com/DilawarShafiq/nietzschian-debugger#readme",
+  "bugs": {
+    "url": "https://github.com/DilawarShafiq/nietzschian-debugger/issues"
+  },
   "engines": {
     "node": ">=20.0.0"
   },
