@@ -1,6 +1,11 @@
 node_modules/
 dist/
 .env
+.env.*
 *.log
 .DS_Store
+Thumbs.db
 coverage/
+*.tmp
+*.swp
+.nietzschian/
