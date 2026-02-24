@@ -5,6 +5,16 @@
 **Status**: Draft
 **Input**: User description: "Debug Mode — the core feature and primary hook of Nietzschian Debugger"
 
+## Clarifications
+
+### Session 2026-02-25
+
+- Q: Where should session data live — current working directory or user home? → A: Per-project in current working directory (`.nietzschian/sessions/`).
+- Q: How does a session end as "solved" — developer declares, LLM detects, or either? → A: Developer explicitly declares (e.g., `solved`, `found it`).
+- Q: How are skill dimension scores calculated? → A: LLM evaluates reasoning quality per-turn, tags behaviors, normalizes to 1-10 scale per dimension.
+- Q: When does the tool route to Sonnet vs Haiku? → A: Sonnet for first code analysis per file only; Haiku for all conversational turns.
+- Q: How should long sessions handle context window limits? → A: Sliding window — keep problem + code + recent turns, summarize older turns automatically.
+
 ## User Scenarios & Testing
 
 ### User Story 1 — Start a Debug Session (Priority: P1)
@@ -21,6 +31,8 @@ A developer encounters a bug and runs `nietzschian debug "My API returns 500 on 
 2. **Given** an active debug session, **When** the user types a response, **Then** the tool evaluates their reasoning and responds with a follow-up question that goes deeper.
 3. **Given** an active debug session, **When** the user asks "just tell me the answer", **Then** the tool refuses and the intensity of questioning increases.
 4. **Given** an active debug session, **When** the user types `exit` or `quit` or presses Ctrl+C, **Then** the session ends gracefully with a summary.
+5. **Given** an active debug session, **When** the developer types `solved` or `found it`, **Then** the tool marks the session outcome as "solved" and proceeds to the growth score summary.
+6. **Given** a session exceeding 20 turns, **When** context approaches the model's limit, **Then** older turns are automatically summarized while preserving the problem description, code context, and recent turns.
 
 ---
 
@@ -135,6 +147,7 @@ The developer sets their Anthropic API key via the `ANTHROPIC_API_KEY` environme
 - What happens when the developer pastes a large error/stack trace? Tool parses the trace and asks questions about the most relevant frames, not the entire trace.
 - What happens if the `.nietzschian/sessions/` directory is deleted between sessions? Tool recreates it on next session. No crash, no error. Previous history is simply unavailable.
 - What happens when there's no internet connection? Tool fails fast with a clear message: "Cannot reach Claude API. Check your connection."
+- What happens when a session runs 30+ turns and approaches context limits? Older turns are automatically summarized into a compressed narrative; the developer sees no interruption. Problem description and code context are always preserved in full.
 
 ## Requirements
 
@@ -143,24 +156,27 @@ The developer sets their Anthropic API key via the `ANTHROPIC_API_KEY` environme
 - **FR-001**: System MUST accept a problem description via `nietzschian debug "<problem>"` and start an interactive terminal session.
 - **FR-002**: System MUST support `--intensity` flag with three values: `socrates`, `nietzsche` (default), `zarathustra`.
 - **FR-003**: System MUST send prompts to the Claude API (Anthropic) using the user's `ANTHROPIC_API_KEY` environment variable.
-- **FR-004**: System MUST use Claude Haiku for fast question generation during the session loop and Claude Sonnet for deeper analysis when code reading or complex reasoning is required.
+- **FR-004**: System MUST use Claude Haiku for all conversational turns and Claude Sonnet only for the first code analysis of each newly referenced file.
 - **FR-005**: System MUST NEVER produce a direct answer, code fix, or solution in any response. Every response MUST contain at least one question or challenge.
 - **FR-006**: System MUST read local files when file paths are detected in the problem description or user responses, and incorporate specific code references (line numbers, function names, variables) into questions.
 - **FR-007**: System MUST escalate intensity when the developer asks for direct answers (e.g., "just tell me", "what's the fix").
 - **FR-008**: System MUST display a growth score summary at session end containing: questions-to-root-cause count, skill dimension ratings with visual bar charts, and a philosophy quote.
-- **FR-009**: System MUST persist session data to `.nietzschian/sessions/` as structured JSON files containing: session ID, timestamp, problem description, intensity level, full Q&A transcript, skill scores, and outcome.
+- **FR-009**: System MUST persist session data to `.nietzschian/sessions/` in the current working directory as per-project structured JSON files containing: session ID, timestamp, problem description, intensity level, full Q&A transcript, skill scores, and outcome.
 - **FR-010**: System MUST embed contextually relevant philosophy quotes during the session: Nietzsche for avoidance, Seneca for overwhelm, Sun Tzu for strategic moments.
 - **FR-011**: System MUST display a clear, actionable error message when `ANTHROPIC_API_KEY` is missing or invalid.
 - **FR-012**: System MUST gracefully handle session exit via `exit`, `quit`, Ctrl+C, or Ctrl+D.
 - **FR-013**: System MUST compare current session performance against historical sessions when prior data exists.
 - **FR-014**: System MUST NOT make any network requests except to the Anthropic API. No telemetry, no analytics, no crash reporting.
 - **FR-015**: System MUST render skill dimension ratings as Unicode block characters (e.g., `████████░░`) in the terminal.
+- **FR-016**: System MUST allow the developer to explicitly end a session as "solved" by typing `solved` or `found it`. No other mechanism may mark a session as solved.
+- **FR-017**: System MUST evaluate reasoning quality per-turn using the LLM, tag observable behaviors (e.g., "guessed without evidence", "checked assumptions"), and normalize scores to a 1-10 scale per skill dimension at session end.
+- **FR-018**: System MUST implement a sliding context window for long sessions: preserve the original problem description, code context, and recent turns in full; automatically summarize older turns to stay within model context limits.
 
 ### Key Entities
 
 - **Session**: A single debug interaction from start to finish. Contains problem description, intensity level, full Q&A transcript, skill scores, outcome (solved/abandoned), timestamps, and metadata.
 - **Growth Profile**: Aggregated view across sessions. Tracks skill dimensions over time, session counts, solve rates, and trends.
-- **Skill Dimension**: A measured aspect of debugging ability (assumption-checking, evidence-gathering, root-cause speed). Scored per session and tracked over time.
+- **Skill Dimension**: A measured aspect of debugging ability (assumption-checking, evidence-gathering, root-cause speed). Scored 1-10 per session via LLM behavior tagging, tracked over time.
 - **Philosophy Quote**: A curated quote with metadata: source philosopher, applicable context (avoidance, overwhelm, strategy, victory, defeat), and the quote text.
 
 ## Success Criteria
@@ -181,7 +197,7 @@ The developer sets their Anthropic API key via the `ANTHROPIC_API_KEY` environme
 - Users can obtain and set an Anthropic API key independently.
 - The Claude Haiku model provides sufficient quality for conversational question generation. Sonnet is reserved for code analysis and complex reasoning.
 - Terminal supports Unicode characters for rendering skill bar charts.
-- `.nietzschian/sessions/` in the current working directory (or user home) is an acceptable storage location.
+- `.nietzschian/sessions/` in the current working directory is the storage location (per-project, not global).
 - The philosophy quote corpus is curated and bundled with the tool (not fetched from an external source).
 - Session JSON schema will use versioning to handle forward compatibility across tool upgrades.
 
