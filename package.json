@@ -1,21 +1,32 @@
 {
   "name": "nietzschian-debugger",
   "version": "0.1.0",
+  "type": "module",
   "description": "The anti-AI debugger. What doesn't kill your code makes it stronger. Confrontational questioning for developers.",
-  "main": "dist/index.js",
+  "main": "dist/cli.js",
   "bin": {
     "nietzschian": "dist/cli.js"
   },
   "scripts": {
     "build": "tsc",
-    "dev": "ts-node src/cli.ts",
-    "test": "vitest",
+    "dev": "node --loader ts-node/esm src/cli.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "lint": "eslint src/"
   },
   "keywords": ["debugging", "education", "nietzsche", "philosophy", "developer-tools", "ai", "learning", "critical-thinking"],
-  "author": "Muhammad Dilawar Shafiq (Dilawar Gopang) <dilawar.gopang@gmail.com> (https://github.com/DilawarShafiq)",
+  "author": "Dilawar Gopang",
   "license": "MIT",
   "engines": {
     "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.78.0",
+    "commander": "^12.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^2.0.0"
   }
 }
