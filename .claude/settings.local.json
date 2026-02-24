@@ -7,7 +7,9 @@
       "Bash(which specifyplus 2>/dev/null || npx specifyplus --help 2>&1 | head -30 || npm list -g specifyplus 2>&1)",
       "Bash(specifyplus:*)",
       "Bash(head:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(git branch:*)",
+      "Bash(cd /c/Users/TechTiesIbrahim/nietzschian-debugger && git checkout -b 1-debug-mode 2>&1)"
     ]
   }
 }
