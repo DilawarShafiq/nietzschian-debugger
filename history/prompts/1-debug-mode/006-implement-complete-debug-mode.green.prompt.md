@@ -7,7 +7,7 @@ surface: agent
 model: claude-opus-4-6
 feature: 1-debug-mode
 branch: 1-debug-mode
-user: DilawarGopang
+user: DilawarShafiq
 command: implementation
 labels: ["implementation","debug-mode","green","typescript","cli","llm","session","scoring","quotes","tests"]
 links:
