@@ -13,7 +13,7 @@
     "lint": "eslint src/"
   },
   "keywords": ["debugging", "education", "nietzsche", "philosophy", "developer-tools", "ai", "learning", "critical-thinking"],
-  "author": "",
+  "author": "Dilawar Gopang",
   "license": "MIT",
   "engines": {
     "node": ">=20.0.0"
