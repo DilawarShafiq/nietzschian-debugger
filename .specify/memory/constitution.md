@@ -122,7 +122,7 @@ MUST never leave the user's machine.
 ## Technology Stack
 
 - **Language**: TypeScript (strict mode, no `any` types)
-- **Runtime**: Node.js >= 18.0.0
+- **Runtime**: Node.js >= 20.0.0 (LTS)
 - **Module system**: ESM (`"type": "module"`)
 - **Distribution**: npm / npx (`npx nietzschian debug ...`)
 - **Core dependencies**: Minimized; prefer Node.js built-in APIs.

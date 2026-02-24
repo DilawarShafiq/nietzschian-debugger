@@ -9,7 +9,15 @@
       "Bash(head:*)",
       "Bash(mkdir:*)",
       "Bash(git branch:*)",
-      "Bash(cd /c/Users/TechTiesIbrahim/nietzschian-debugger && git checkout -b 1-debug-mode 2>&1)"
+      "Bash(cd /c/Users/TechTiesIbrahim/nietzschian-debugger && git checkout -b 1-debug-mode 2>&1)",
+      "Bash(cd /c/Users/TechTiesIbrahim/nietzschian-debugger && powershell -ExecutionPolicy Bypass -File .specify/scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly 2>&1)",
+      "Bash(cd:*)",
+      "Bash(cd /c/Users/TechTiesIbrahim/nietzschian-debugger && powershell -ExecutionPolicy Bypass -File .specify/scripts/powershell/setup-plan.ps1 -Json 2>&1)",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(git:*)",
+      "WebFetch(domain:tessl.io)",
+      "Bash(cd /c/Users/TechTiesIbrahim/nietzschian-debugger && powershell -ExecutionPolicy Bypass -File .specify/scripts/powershell/update-agent-context.ps1 -AgentType claude 2>&1)"
     ]
   }
 }

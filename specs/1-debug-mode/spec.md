@@ -193,7 +193,7 @@ The developer sets their Anthropic API key via the `ANTHROPIC_API_KEY` environme
 
 ## Assumptions
 
-- Users have Node.js >= 18.0.0 installed.
+- Users have Node.js >= 20.0.0 installed.
 - Users can obtain and set an Anthropic API key independently.
 - The Claude Haiku model provides sufficient quality for conversational question generation. Sonnet is reserved for code analysis and complex reasoning.
 - Terminal supports Unicode characters for rendering skill bar charts.
@@ -228,7 +228,7 @@ The developer sets their Anthropic API key via the `ANTHROPIC_API_KEY` environme
 ## Dependencies
 
 - Anthropic Claude API (Haiku and Sonnet models)
-- Node.js >= 18.0.0 runtime
+- Node.js >= 20.0.0 runtime
 - User's terminal with Unicode support
 - Local filesystem access for session storage
 
