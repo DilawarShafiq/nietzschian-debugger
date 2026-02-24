@@ -7,7 +7,7 @@ surface: agent
 model: claude-opus-4-6
 feature: 1-debug-mode
 branch: 1-debug-mode
-user: Dilawar Shafiq
+user: Dilawar Gopang
 command: /sp.clarify
 labels: ["clarification", "debug-mode", "session-storage", "scoring", "context-window"]
 links:
