@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "timestamp": "2024-06-15T10:30:00.000Z",
+  "endTimestamp": "2024-06-15T10:45:00.000Z",
+  "problemDescription": "My Express API returns 500 on POST /users",
+  "intensity": "nietzsche",
+  "outcome": "solved",
+  "questionsToRootCause": 5,
+  "codeFiles": ["./src/routes/users.ts", "./src/middleware/auth.ts"],
+  "transcript": [
+    {
+      "turnNumber": 1,
+      "question": "When you say the API returns 500, have you checked the server logs to see the actual error that's being thrown?",
+      "response": "I think it might be the database connection",
+      "model": "claude-haiku-4-5-20251001",
+      "quoteUsed": null,
+      "behaviorTags": ["guessed-without-evidence"],
+      "timestamp": "2024-06-15T10:31:00.000Z"
+    },
+    {
+      "turnNumber": 2,
+      "question": "You *think* it might be the database? What evidence do you have? Have you actually looked at the error message in the response or the server logs?",
+      "response": "OK let me check the logs... I see a TypeError: Cannot read properties of undefined (reading 'id')",
+      "model": "claude-haiku-4-5-20251001",
+      "quoteUsed": null,
+      "behaviorTags": ["checked-logs"],
+      "timestamp": "2024-06-15T10:33:00.000Z"
+    },
+    {
+      "turnNumber": 3,
+      "question": "Good — now you have data. The error says something is undefined when you try to read '.id'. Which variable is undefined? What line does the stack trace point to?",
+      "response": "The stack trace points to line 24 in users.ts where it does req.body.id",
+      "model": "claude-haiku-4-5-20251001",
+      "quoteUsed": null,
+      "behaviorTags": ["narrowed-scope"],
+      "timestamp": "2024-06-15T10:36:00.000Z"
+    },
+    {
+      "turnNumber": 4,
+      "question": "So req.body is undefined on line 24. What middleware is responsible for parsing the request body? Have you confirmed it's actually running before this route handler?",
+      "response": "Oh wait, I'm not using body-parser or express.json()! The middleware is missing",
+      "model": "claude-sonnet-4-6",
+      "quoteUsed": null,
+      "behaviorTags": ["questioned-assumption"],
+      "timestamp": "2024-06-15T10:40:00.000Z"
+    },
+    {
+      "turnNumber": 5,
+      "question": "You found it. The body parser middleware was never added, so req.body was always undefined. What assumption did you make at the start that led you away from this simple cause?",
+      "response": "[solved]",
+      "model": "claude-haiku-4-5-20251001",
+      "quoteUsed": null,
+      "behaviorTags": [],
+      "timestamp": "2024-06-15T10:44:00.000Z"
+    }
+  ],
+  "skillScores": {
+    "assumptionChecking": 7,
+    "evidenceGathering": 6,
+    "rootCauseSpeed": 7
+  },
+  "behaviorTags": [
+    { "turnNumber": 1, "tag": "guessed-without-evidence", "dimension": "evidenceGathering" },
+    { "turnNumber": 2, "tag": "checked-logs", "dimension": "evidenceGathering" },
+    { "turnNumber": 3, "tag": "narrowed-scope", "dimension": "rootCauseSpeed" },
+    { "turnNumber": 4, "tag": "questioned-assumption", "dimension": "assumptionChecking" }
+  ]
+}
