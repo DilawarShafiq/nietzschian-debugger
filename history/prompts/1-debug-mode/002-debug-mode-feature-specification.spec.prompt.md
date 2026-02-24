@@ -7,7 +7,7 @@ surface: agent
 model: claude-opus-4-6
 feature: 1-debug-mode
 branch: 1-debug-mode
-user: Dilawar Shafiq
+user: Dilawar Gopang
 command: /sp.specify
 labels: ["debug-mode", "specification", "core-feature", "intensity-levels", "session-tracking"]
 links:

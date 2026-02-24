@@ -7,7 +7,7 @@ surface: agent
 model: claude-opus-4-6
 feature: none
 branch: main
-user: Dilawar Shafiq
+user: Dilawar Gopang
 command: /sp.constitution
 labels: ["constitution", "principles", "ratification", "governance"]
 links:
