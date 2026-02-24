@@ -13,7 +13,7 @@
     "lint": "eslint src/"
   },
   "keywords": ["debugging", "education", "nietzsche", "philosophy", "developer-tools", "ai", "learning", "critical-thinking"],
-  "author": "Muhammad Dilawar Shafiq (Dilawar Gopang) <dilawar@autosapien.com> (https://github.com/DilawarShafiq)",
+  "author": "Muhammad Dilawar Shafiq (Dilawar Gopang) <dilawar.gopang@gmail.com> (https://github.com/DilawarShafiq)",
   "license": "MIT",
   "engines": {
     "node": ">=20.0.0"
