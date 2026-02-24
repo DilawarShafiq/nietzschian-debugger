@@ -1,91 +1,95 @@
-# Socratic Debugger
+# Nietzschian Debugger
 
-> I won't fix your bugs. I'll teach you to.
+> "What doesn't kill your code makes it stronger."
 
-The anti-AI. Every other tool gives you answers. Socratic Debugger **asks you questions**.
+The anti-AI. Every other tool gives you answers. Nietzschian Debugger **confronts you with questions**.
 
 You paste your bug. It doesn't fix it. Instead, it:
 
-- Asks what you've already tried
 - Challenges your assumptions about what's happening
-- Points you to the exact evidence you're missing
+- Forces you to confront the evidence you're avoiding
+- Tears apart your weak reasoning until only truth remains
 - Guides you to the "aha!" moment — YOUR moment, not the AI's
 
 ## Why?
 
-AI is making developers worse. Copy-paste from ChatGPT, ship, repeat. Nobody understands their own code anymore. **Socratic Debugger makes you a better developer**, not a more dependent one.
+AI is making developers weaker. Copy-paste from ChatGPT, ship, repeat. Nobody understands their own code anymore. **Nietzschian Debugger forges stronger developers** — through struggle, not shortcuts.
+
+> "He who has a why to debug can bear almost any how."
 
 ## Quick Start
 
 ```bash
 # Start a debugging session
-npx socratic debug "My API returns 500 but only on Tuesdays"
+npx nietzschian debug "My API returns 500 but only on Tuesdays"
 
 # Analyze a specific file
-npx socratic investigate ./src/api/handler.ts
+npx nietzschian investigate ./src/api/handler.ts
 
 # Review your reasoning journey
-npx socratic reflect --session latest
+npx nietzschian reflect --session latest
 ```
 
 ## How a Session Looks
 
 ```
-  Socratic Debugger v0.1.0
+  Nietzschian Debugger v0.1.0
 
 You: My login endpoint returns 403 for some users
 
-Socratic: Interesting. Before we dive in — what's different about
-          the users who get 403 vs those who don't?
+Nietzschian: You say "some users." That's vague. What separates
+             the ones who fail from the ones who don't?
 
 You: I'm not sure, it seems random
 
-Socratic: "Seems random" is a hypothesis. Have you checked the
-          server logs for the 403 responses? What do they say?
+Nietzschian: "Random" is the word we use when we haven't looked
+             hard enough. What do the server logs say for the 403
+             responses? Go look. I'll wait.
 
 You: Let me check... oh, they all have expired JWT tokens
 
-Socratic: Good finding. Now — why would some users have expired
-          tokens while others don't? What controls token expiry
-          in your system?
+Nietzschian: Now we're getting somewhere. Why would some users
+             have expired tokens while others don't? What changed
+             recently in your auth system?
 
 You: ... oh. We changed the token TTL last week and didn't
      invalidate existing sessions.
 
-Socratic: You just found your bug. And more importantly — what
-          did you learn about deploying auth changes?
+Nietzschian: There it is. You didn't need me to tell you — you
+             needed to be forced to look. What will you check
+             BEFORE deploying auth changes next time?
 ```
 
 ## Features
 
-- **Debug Mode** — Guided Socratic questioning for any bug
-- **Investigate Mode** — Point it at code, it asks you what you think it does (and challenges you)
-- **Reflect Mode** — Reviews your past debugging sessions, shows patterns in your thinking
-- **Skill Adaptation** — Adjusts question depth to your experience level
+- **Debug Mode** — Relentless questioning that strips away assumptions
+- **Investigate Mode** — Point it at code, it challenges everything you think you know
+- **Reflect Mode** — Reviews your past sessions, exposes patterns in your thinking
+- **Skill Adaptation** — Adjusts intensity to your experience level
 - **Evidence-First** — Always points to code, logs, data. Never hand-waves.
 - **Session Memory** — Tracks your debugging journey and growth over time
 
 ## The Philosophy
 
-| Traditional AI | Socratic Debugger |
-|---------------|-------------------|
+| Traditional AI | Nietzschian Debugger |
+|---------------|---------------------|
 | "Here's the fix" | "What have you tried?" |
-| Makes you dependent | Makes you independent |
+| Makes you dependent | Makes you dangerous |
 | You learn nothing | You learn everything |
-| Fast but shallow | Slower but lasting |
+| Fast but shallow | Painful but permanent |
 | AI gets smarter | YOU get smarter |
 
 ## Who Is This For?
 
 - **Junior developers** who want to actually learn, not just copy-paste
-- **Senior developers** who miss the "aha!" moments
+- **Senior developers** who miss the struggle that made them good
 - **Engineering managers** who want their team thinking, not just prompting
 - **Bootcamp students** building real debugging intuition
-- **Anyone** tired of AI making them lazier
+- **Anyone** who believes the best developer is a self-reliant one
 
 ## Status
 
-🚧 **Under active development** — Star this repo to follow progress!
+Under active development — Star this repo to follow progress!
 
 ## License
 
