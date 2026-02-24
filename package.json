@@ -1,10 +1,10 @@
 {
-  "name": "socratic-debugger",
+  "name": "nietzschian-debugger",
   "version": "0.1.0",
-  "description": "The anti-AI debugger. Won't fix your bugs — teaches you to. Socratic questioning for developers.",
+  "description": "The anti-AI debugger. What doesn't kill your code makes it stronger. Confrontational questioning for developers.",
   "main": "dist/index.js",
   "bin": {
-    "socratic": "dist/cli.js"
+    "nietzschian": "dist/cli.js"
   },
   "scripts": {
     "build": "tsc",
@@ -12,7 +12,7 @@
     "test": "vitest",
     "lint": "eslint src/"
   },
-  "keywords": ["debugging", "education", "socratic-method", "developer-tools", "ai", "learning", "critical-thinking"],
+  "keywords": ["debugging", "education", "nietzsche", "philosophy", "developer-tools", "ai", "learning", "critical-thinking"],
   "author": "",
   "license": "MIT",
   "engines": {
