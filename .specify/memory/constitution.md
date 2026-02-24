@@ -12,13 +12,13 @@
   Follow-up TODOs: None
 -->
 
-# Socratic Debugger Constitution
+# Nietzschian Debugger Constitution
 
 ## Project Identity
 
-- **Name**: Socratic Debugger
-- **Purpose**: An anti-AI debugging tool that teaches developers to find and fix their own bugs through Socratic questioning. Makes developers stronger, not more dependent.
-- **Tagline**: "I won't fix your bugs. I'll teach you to."
+- **Name**: Nietzschian Debugger
+- **Purpose**: An anti-AI debugging tool that forges stronger developers through confrontational questioning. What doesn't kill your code makes it stronger.
+- **Tagline**: "What doesn't kill your code makes it stronger."
 
 ## Core Principles
 
@@ -94,7 +94,7 @@ their growth patterns, common reasoning mistakes, and areas of
 improvement.
 
 - All session data MUST be stored locally in structured format
-  (JSON files in `.socratic/sessions/`).
+  (JSON files in `.nietzschian/sessions/`).
 - The reflect mode MUST surface cross-session patterns: common bug
   categories, reasoning improvements, recurring blind spots.
 - Session history MUST be queryable: by date, by bug type, by
@@ -124,12 +124,12 @@ MUST never leave the user's machine.
 - **Language**: TypeScript (strict mode, no `any` types)
 - **Runtime**: Node.js >= 18.0.0
 - **Module system**: ESM (`"type": "module"`)
-- **Distribution**: npm / npx (`npx socratic debug ...`)
+- **Distribution**: npm / npx (`npx nietzschian debug ...`)
 - **Core dependencies**: Minimized; prefer Node.js built-in APIs.
   New dependencies MUST be justified by a clear need.
 - **Testing**: vitest
 - **Build**: tsc (TypeScript compiler)
-- **Session storage**: JSON files in `.socratic/sessions/`
+- **Session storage**: JSON files in `.nietzschian/sessions/`
 
 ## Development Workflow
 
@@ -148,7 +148,7 @@ MUST never leave the user's machine.
 ## Governance
 
 This constitution is the authoritative source for all development
-decisions in the Socratic Debugger project.
+decisions in the Nietzschian Debugger project.
 
 - All PRs and code reviews MUST verify compliance with these
   principles.
