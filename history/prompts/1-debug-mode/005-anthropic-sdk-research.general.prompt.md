@@ -7,7 +7,7 @@ surface: agent
 model: claude-sonnet-4-6
 feature: 1-debug-mode
 branch: 1-debug-mode
-user: TechTiesIbrahim
+user: DilawarGopang
 command: research
 labels: ["research","anthropic-sdk","typescript","streaming","error-handling","model-ids"]
 links:

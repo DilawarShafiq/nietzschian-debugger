@@ -7,7 +7,7 @@ surface: agent
 model: claude-sonnet-4-6
 feature: none
 branch: 1-debug-mode
-user: TechTiesIbrahim
+user: DilawarGopang
 command: research
 labels: ["research","cli","esm","typescript","commander","yargs","citty","clipanion","readline","inquirer"]
 links:
