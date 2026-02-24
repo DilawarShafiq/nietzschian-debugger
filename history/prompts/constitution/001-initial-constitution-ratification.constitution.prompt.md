@@ -25,8 +25,8 @@ tests:
 
 Write the constitution for the socratic-debugger project.
 
-1. Read the existing template at C:\Users\DilawarGopang\nietzschian-debugger\.specify\memory\constitution.md
-2. Read the README at C:\Users\DilawarGopang\nietzschian-debugger\README.md for project context
+1. Read the existing template at C:\Users\DilawarShafiq\nietzschian-debugger\.specify\memory\constitution.md
+2. Read the README at C:\Users\DilawarShafiq\nietzschian-debugger\README.md for project context
 3. The existing constitution.md may already have content (it was written earlier). Read it and enhance it to the full template format. The project is:
 
 **Socratic Debugger** — The anti-AI debugger. Won't fix your bugs — teaches you to. Socratic questioning for developers.
@@ -41,7 +41,7 @@ Core principles:
 
 Tech stack: TypeScript, Node.js, npm distribution. Testing: vitest. Code quality: strict TypeScript, ESM modules.
 
-4. Write the completed constitution to C:\Users\DilawarGopang\nietzschian-debugger\.specify\memory\constitution.md
+4. Write the completed constitution to C:\Users\DilawarShafiq\nietzschian-debugger\.specify\memory\constitution.md
 
 Include the Sync Impact Report as HTML comment at top. Version 1.0.0, ratified 2026-02-24.
 

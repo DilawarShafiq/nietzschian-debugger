@@ -7,7 +7,7 @@ surface: agent
 model: claude-sonnet-4-6
 feature: 1-debug-mode
 branch: 1-debug-mode
-user: DilawarGopang
+user: DilawarShafiq
 command: manual research prompt
 labels: ["context-window","sliding-window","token-counting","summarization","system-prompt","persona-enforcement"]
 links:
