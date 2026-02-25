@@ -1,11 +1,45 @@
-node_modules/
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
 dist/
+build/
+.eggs/
+*.whl
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Environment
 .env
 .env.*
-*.log
+
+# OS
 .DS_Store
 Thumbs.db
-coverage/
+
+# Logs
+*.log
 *.tmp
-*.swp
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage
+coverage/
+.tox/
+
+# App data
 .nietzschian/
+
+# Legacy (Node.js)
+node_modules/

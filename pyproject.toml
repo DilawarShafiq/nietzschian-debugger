@@ -1,0 +1,67 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nietzschian-debugger"
+version = "0.1.0"
+description = "The anti-AI debugger. What doesn't kill your code makes it stronger. Confrontational questioning for developers."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "Dilawar Shafiq", email = "dilawar.gopang@gmail.com"},
+]
+keywords = [
+    "debugging",
+    "education",
+    "nietzsche",
+    "philosophy",
+    "developer-tools",
+    "ai",
+    "learning",
+    "critical-thinking",
+    "cli",
+    "socratic",
+    "anthropic",
+    "claude",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Debuggers",
+    "Topic :: Education",
+    "Environment :: Console",
+]
+dependencies = [
+    "anthropic>=0.40.0",
+    "click>=8.1.0",
+    "rich>=13.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.23.0",
+]
+
+[project.scripts]
+nietzschian = "nietzschian_debugger.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/DilawarShafiq/nietzschian-debugger"
+Repository = "https://github.com/DilawarShafiq/nietzschian-debugger"
+Issues = "https://github.com/DilawarShafiq/nietzschian-debugger/issues"
+
+[tool.setuptools.packages.find]
+include = ["nietzschian_debugger*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
