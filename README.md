@@ -1,5 +1,7 @@
 # Nietzschian Debugger
 
+![Nietzschian Debugger: the debugger that only asks questions](assets/banner.png)
+
 > "What doesn't kill your code makes it stronger."
 
 The anti-AI. Every other tool gives you answers. Nietzschian Debugger **confronts you with questions**.
