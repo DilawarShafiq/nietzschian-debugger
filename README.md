@@ -22,15 +22,16 @@ AI is making developers weaker. Copy-paste from ChatGPT, ship, repeat. Nobody un
 ## Installation
 
 ```bash
-# Install globally
-npm install -g nietzschian-debugger
-
-# Or use directly with npx
+# Published release (npm, v0.1.0)
 npx nietzschian-debugger
+
+# Current source (Python 3.10+)
+pip install git+https://github.com/DilawarShafiq/nietzschian-debugger.git
+nietzschian debug "your bug"
 ```
 
 **Requirements:**
-- Node.js >= 20.0.0
+- Node.js >= 20 for the npm release, or Python >= 3.10 for the current source
 - An Anthropic API key (BYOK — bring your own key)
 
 ## Setup
@@ -151,27 +152,23 @@ Your Debugging Profile:
 
 ```bash
 # Clone and install
-git clone https://github.com/your-username/nietzschian-debugger.git
+git clone https://github.com/DilawarShafiq/nietzschian-debugger.git
 cd nietzschian-debugger
-npm install
-
-# Build
-npm run build
+pip install -e ".[dev]"
 
 # Run tests (121 tests)
-npm test
+pytest
 
-# Run CLI locally
-node dist/cli.js debug "test problem"
+# Run the CLI locally
+nietzschian debug "test problem"
 ```
 
 ## Tech Stack
 
-- TypeScript (strict mode)
-- Node.js >= 20
-- Claude API (Haiku for conversation, Sonnet for code analysis)
-- Commander.js for CLI
-- Vitest for testing
+- Python >= 3.10
+- Claude API via the Anthropic SDK
+- Click for the CLI, Rich for the terminal UI
+- pytest for testing
 
 ## License
 
