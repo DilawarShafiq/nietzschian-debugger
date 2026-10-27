@@ -27,12 +27,16 @@ async def debug_command(
     diff_since: "str | None" = None,
 ) -> None:
     """Run a full debugging session."""
-    # Validate API key
-    try:
-        get_client()
-    except MissingApiKeyError:
-        display_api_key_help()
-        sys.exit(1)
+    # Validate API key (Anthropic path only; other providers validate their own
+    # key lazily on the first call).
+    from ..llm import providers
+
+    if providers.active() is None:
+        try:
+            get_client()
+        except MissingApiKeyError:
+            display_api_key_help()
+            sys.exit(1)
 
     # Validate problem description
     if not problem_description or not problem_description.strip():
