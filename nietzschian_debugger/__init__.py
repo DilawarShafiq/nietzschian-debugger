@@ -4,4 +4,4 @@ What doesn't kill your code makes it stronger.
 Confrontational questioning for developers.
 """
 
-__version__ = "0.2.4"
+__version__ = "0.3.0"
