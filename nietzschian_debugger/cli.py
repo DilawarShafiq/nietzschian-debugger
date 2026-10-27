@@ -16,7 +16,7 @@ VALID_INTENSITIES = ("socrates", "nietzsche", "zarathustra")
 @click.group()
 @click.version_option(version=__version__, prog_name="nietzschian")
 def cli() -> None:
-    """The anti-AI debugger. What doesn't kill your code makes it stronger."""
+    """It won't fix your bug. It'll fix you. What doesn't kill your code makes it stronger."""
     pass
 
 

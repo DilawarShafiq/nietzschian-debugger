@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here.
 
+## [0.2.1] — 2026-10-27
+
+### Fixed
+- `--version` reported `0.1.0` — now correctly reports the installed version.
+- Removed the last "anti-AI" wording from the CLI (`--help`) and package docstring.
+- Session errors are now surfaced to the developer instead of failing silently
+  as "abandoned."
+
 ## [0.2.0] — 2026-10-27
 
 The ground-up Python rewrite. The original `0.1.0` was a TypeScript/npm build;
