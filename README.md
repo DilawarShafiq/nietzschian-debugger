@@ -2,6 +2,10 @@
 
 ![Nietzschian Debugger: the debugger that only asks questions](assets/banner.png)
 
+[![PyPI](https://img.shields.io/pypi/v/nietzschian-debugger)](https://pypi.org/project/nietzschian-debugger/)
+[![Python](https://img.shields.io/pypi/pyversions/nietzschian-debugger)](https://pypi.org/project/nietzschian-debugger/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 > "What doesn't kill your code makes it stronger."
 
 **It won't fix your bug. It'll fix you.** Every other tool hands you the answer; Nietzschian Debugger hands the question back.
@@ -10,8 +14,8 @@ You paste your bug. It doesn't fix it. Instead, it:
 
 - Challenges your assumptions about what's happening
 - Forces you to confront the evidence you're avoiding
-- Tears apart your weak reasoning until only truth remains
-- Guides you to the "aha!" moment — YOUR moment, not the AI's
+- Attacks the assumption you're proudest of — the one you stopped questioning
+- Guides you to the fix yourself — your realization, not the AI's
 
 ## Why?
 
@@ -223,30 +227,15 @@ Your Debugging Profile:
 
 ## Features
 
-- **Never Gives Answers** — Every response is a question. The tool will NEVER tell you the fix.
-- **Real Code Reading** — Reference a file path and it reads YOUR actual code, not generic examples.
+- **Refuses to Hand You the Fix** — Every response is a question. It's built to withhold the answer, and a model-judge double-checks each reply to catch it when it slips.
+- **Real Code Reading** — Reference a file path and it reads YOUR actual code, not generic examples. `--diff` feeds it your uncommitted changes.
+- **Any Model, Even Local** — Claude by default; or OpenAI, Gemini, DeepSeek, Groq, and more — or a local Ollama / LM Studio model with no key and no cost.
+- **Try With No Key** — `nietzschian demo` runs a full scripted session so you can see it before committing a key.
+- **Shareable Sessions** — `nietzschian share` exports a session as clean markdown you can post.
 - **Contextual Philosophy** — Nietzsche when you're avoiding, Seneca when overwhelmed, Sun Tzu when you need strategy.
 - **Growth Score** — Track your debugging skills across sessions with visual bar charts.
 - **Session History** — All sessions saved locally in `.nietzschian/sessions/` for trend tracking.
 - **Sliding Context** — Long sessions don't crash; older turns are transparently summarized.
-
-## The Philosophy
-
-| Traditional AI | Nietzschian Debugger |
-|---------------|---------------------|
-| "Here's the fix" | "What have you tried?" |
-| Makes you dependent | Makes you dangerous |
-| You learn nothing | You learn everything |
-| Fast but shallow | Painful but permanent |
-| AI gets smarter | YOU get smarter |
-
-## Who Is This For?
-
-- **Junior developers** who want to actually learn, not just copy-paste
-- **Senior developers** who miss the struggle that made them good
-- **Engineering managers** who want their team thinking, not just prompting
-- **Bootcamp students** building real debugging intuition
-- **Anyone** who believes the best developer is a self-reliant one
 
 ## Development
 
@@ -256,7 +245,7 @@ git clone https://github.com/DilawarShafiq/nietzschian-debugger.git
 cd nietzschian-debugger
 pip install -e ".[dev]"
 
-# Run tests (121 tests)
+# Run the test suite
 pytest
 
 # Run the CLI locally
