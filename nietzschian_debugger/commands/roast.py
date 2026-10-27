@@ -12,7 +12,7 @@ import re
 import sys
 
 from ..llm.client import call_llm, get_client, get_conversation_model, MissingApiKeyError
-from ..ui.renderer import console, display_api_key_help, display_error
+from ..ui.renderer import console, display_api_key_help, display_error, thinking
 
 _MAX_CODE_CHARS = 12000
 
@@ -34,14 +34,18 @@ def _clean_roast(text: str) -> str:
     t = re.sub(r"(?<!\w)\*(?!\s)(.+?)(?<!\s)\*(?!\w)", r"\1", t, flags=re.DOTALL)
     t = t.replace("**", "")
     t = re.sub(r"[ \t]*\n[ \t\n]*", " ", t).strip()  # one flowing line
-    parts = re.split(r"(?<=[.!?])\s+", t)
+    # Split on sentence end, allowing a closing quote between the period and the
+    # space (…care." "Helper…) so a quoted sentence still counts as a boundary —
+    # but NOT after a merely quoted word like "helper" that ends no sentence.
+    parts = re.split(r"(?<=[.!?])[\"”’']?\s+", t)
     if len(parts) > 2:
         t = " ".join(parts[:2]).strip()
     return t
 
 ROAST_SYSTEM = (
     "You are the Nietzschian Debugger in ROAST mode, in Nietzsche's voice. You are "
-    "shown a file of code. Deliver a ROAST: ONE or TWO lines, never more.\n\n"
+    "shown a file of code. Deliver a ROAST: ONE or TWO sentences of plain prose, "
+    "never more.\n\n"
     "Seize something SPECIFIC and real in the code and hold it up to the light — the "
     "bare `except:` that swallows every truth, the TODO fossilised from years ago, the "
     "function named `helper` or `util` that dares not say what it does, the mutable "
@@ -51,9 +55,38 @@ ROAST_SYSTEM = (
     "You do NOT fix it. You do NOT ask a question. You judge its character and you "
     "laugh — aphoristic, metaphoric, merciless, and funny. 'Not by wrath does one "
     "kill, but by laughter.' Roast the CODE and the comfort it was written from, never "
-    "the person. End on a line that stings and grins. Two lines maximum. No preamble, "
-    "no 'here is your roast', no quotation marks around the whole thing."
+    "the person. End on a line that stings and grins.\n\n"
+    "OUTPUT RULES (obey exactly): plain prose only. No question marks. No JSON, no "
+    "function call, no 'DARE:' or 'CALL:' labels, no code block, no markdown, no "
+    "bullet points, no preamble like 'here is your roast', no surrounding quotes. Just "
+    "the one or two sentences."
 )
+
+# Weak/code models sometimes answer a roast with a predict-style function call or a
+# JSON blob instead of prose. Detect that so we can retry for real contempt.
+_STRUCTURED = re.compile(r'(DARE:|CALL:|```|"function"\s*:|^\s*\{)', re.IGNORECASE | re.MULTILINE)
+
+
+def _looks_structured(text: str) -> bool:
+    return bool(_STRUCTURED.search(text))
+
+
+def _ask_roast(code: str, file_path: str, model: str, firm: bool = False) -> str:
+    """One roast attempt, with the spinner. `firm` adds a sterner anti-structure nudge."""
+    system = ROAST_SYSTEM
+    if firm:
+        system += (
+            "\n\nYour last answer broke the rules. Reply with ONLY one or two plain "
+            "English sentences roasting the code. Nothing else — no JSON, no labels, "
+            "no questions."
+        )
+    with thinking():
+        raw = call_llm(
+            system,
+            [{"role": "user", "content": f"The file ({file_path}):\n\n{code[:_MAX_CODE_CHARS]}"}],
+            model,
+        )
+    return raw
 
 
 def roast_command(file_path: str) -> None:
@@ -79,15 +112,17 @@ def roast_command(file_path: str) -> None:
 
     model = get_conversation_model()
     try:
-        roast = call_llm(
-            ROAST_SYSTEM,
-            [{"role": "user", "content": f"The file ({file_path}):\n\n{code[:_MAX_CODE_CHARS]}"}],
-            model,
-        )
+        roast = _clean_roast(_ask_roast(code, file_path, model))
+        # A weak or code-tuned model may answer empty, or with a JSON/DARE blob.
+        # Give it exactly one firmer chance before we settle for a terse fallback.
+        if not roast or _looks_structured(roast):
+            roast = _clean_roast(_ask_roast(code, file_path, model, firm=True))
+        if not roast or _looks_structured(roast):
+            roast = "Even your code's cowardice cannot hold a shape — this model choked on contempt. Try a general chat model (e.g. ollama:llama3.1); coding models reach for JSON, not wit."
     except Exception as error:
         display_error(f"roast ended unexpectedly: {error}")
         sys.exit(1)
 
     console.print("\n[bold red]🔥 Nietzschian Roast[/bold red]\n")
-    print(_clean_roast(roast).strip('"'))
+    print(roast.strip('"'))
     console.print()

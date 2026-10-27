@@ -21,7 +21,11 @@ def get_git_diff(ref: Optional[str] = None) -> Optional[str]:
     """
     cmd = ["git", "diff", ref] if ref else ["git", "diff", "HEAD"]
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+        # Decode as UTF-8 with errors replaced: a diff with accented text or emoji
+        # must never crash the reader on a Windows cp1252 console.
+        result = subprocess.run(
+            cmd, capture_output=True, encoding="utf-8", errors="replace", timeout=10
+        )
     except Exception:
         return None
     if result.returncode != 0:

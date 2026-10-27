@@ -42,7 +42,7 @@ nietzschian demo
 
 **Requirements:**
 - Python >= 3.10
-- An Anthropic API key (BYOK) — *or* bring another model (OpenAI, Gemini, DeepSeek, …), or run a local **Ollama** model, which needs no key. See [Use any model](#use-any-model).
+- An Anthropic API key (BYOK) — *or* bring another model (OpenAI, Gemini, DeepSeek, …), or run a local **Ollama** model, which needs no key. See [Models — set one up, switch any time](#models--set-one-up-switch-any-time).
 
 ## Setup
 
@@ -79,25 +79,70 @@ nietzschian debug --diff "tests started failing after my last change"
 nietzschian debug --model ollama:llama3.1 "my function returns null sometimes"
 ```
 
-## Use any model — API or local
+## Models — set one up, switch any time
 
-Claude is the default and the sharpest experience, but you can bring any model —
-most speak the OpenAI API, so they just work:
+**Claude is the default and the sharpest experience.** With `ANTHROPIC_API_KEY` set,
+every command just works with no flags. But the tool is model-agnostic — it speaks
+the OpenAI API, so almost any hosted or local model works too.
+
+### Switching models
+
+The model is chosen *per command* with `--model`. There's no config to edit and no
+state to reset — you switch just by changing the flag, or **drop it to return to
+Claude**:
 
 ```bash
-# Hosted (set the matching key: OPENAI_API_KEY, GEMINI_API_KEY, DEEPSEEK_API_KEY, …)
+nietzschian debug "my bug"                                # Claude (needs ANTHROPIC_API_KEY)
+nietzschian debug "my bug" --model openai:gpt-4o-mini     # a hosted model
+nietzschian debug "my bug" --model ollama:llama3.1        # a local model, no key
+```
+
+The flag isn't sticky — each run is independent. (There's no mid-session switch yet;
+to change model, re-run the command with a different `--model`.)
+
+### Hosted models (bring your own key)
+
+Set the matching key, then select the model:
+
+```bash
+export OPENAI_API_KEY=...     # or GEMINI_API_KEY, DEEPSEEK_API_KEY, GROQ_API_KEY, …
 nietzschian debug --model openai:gpt-4o-mini "..."
 nietzschian debug --model deepseek:deepseek-chat "..."
 nietzschian debug --model gemini:gemini-1.5-flash "..."
-
-# Local — no key, no cost, runs offline
-nietzschian debug --model ollama:llama3.1 "..."
 ```
 
-Install the provider deps once: `pip install "nietzschian-debugger[providers]"`.
-Supported: **openai, gemini, deepseek, groq, mistral, together, openrouter, xai, ollama, lmstudio** — plus `custom:<model>` with `NIETZSCHIAN_BASE_URL` for any other OpenAI-compatible endpoint.
+Supported: **openai, gemini, deepseek, groq, mistral, together, openrouter, xai** —
+plus `custom:<model>` with `NIETZSCHIAN_BASE_URL` for any other OpenAI-compatible endpoint.
 
-> Honest caveat: the "never give answers" discipline is sharpest on Claude. Smaller local models leak and over-ask more (the built-in validator catches some of it, not all).
+### Local models with Ollama (no key, no cost, offline)
+
+```bash
+# 1. Install Ollama (https://ollama.com) and make sure it's running
+# 2. Pull a model once:
+ollama pull llama3.1
+# 3. Add the provider deps once, then point the tool at it:
+pip install "nietzschian-debugger[providers]"
+nietzschian roast ./messy.py --model ollama:llama3.1
+```
+
+(LM Studio works the same way: `--model lmstudio:<model>`.)
+
+### Which local model should I use?
+
+Different jobs reward different kinds of model — and the twist is that the *best*
+model for `predict` is the *worst* for `roast`:
+
+| Command | Best local model | Why |
+|---|---|---|
+| **`roast`**, **`debug`** | a **general chat** model — `llama3.1`, `qwen3` | built for prose and wit |
+| **`predict`** | a **coding** model — `qwen2.5-coder` | it wants a precise function call — exactly the dare |
+
+A coding model asked to *roast* reaches for JSON instead of a joke; a chat model asked
+to *predict* is vaguer about the exact return value. Match the model to the job.
+
+> Honest caveat: the "never give answers" discipline is sharpest on **Claude**.
+> Smaller local models leak and over-ask more — the built-in validator and the
+> roast/predict guards catch a lot of it, not all.
 
 ## Share a session
 
