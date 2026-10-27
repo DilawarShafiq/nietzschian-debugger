@@ -49,3 +49,9 @@ node_modules/
 
 # PyPI credentials (never commit)
 *.pypirc
+
+# AI dev-process files (kept local, not published)
+CLAUDE.md
+.claude/
+.specify/
+history/
