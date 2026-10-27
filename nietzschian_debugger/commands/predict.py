@@ -1,14 +1,13 @@
-"""`predict` mode — dare the developer to say what their code does, then RUN it.
+"""`predict` mode — prove you understand your code before you run it.
 
-The lesson from the first prototype: a model *reasoning* about behaviour can be
-confidently wrong, and a tool about not fooling yourself must never fool you. So
-here the truth comes from **executing the code**, not from the model. The model
-only (1) picks a non-obvious call to dare you with, and (2) frames the gap between
-your guess and the real result. The real result is whatever the function actually
-returns (or raises), shown to you plainly.
+Several rounds: each one dares you to predict a non-obvious behaviour, then RUNS
+the code for the truth (never a model guessing — that can be confidently wrong),
+and names the gap between what you believed and what the code does. At the end, a
+Proof-of-Understanding report names the *pattern* in your misses — not a score, a
+pattern. "You keep missing early returns" is worth more than "73%".
 
-Execution runs in a separate Python process with a timeout — it's your own code,
-run the way you'd run it yourself.
+Execution runs in a separate Python process with a timeout — your own code, run
+the way you'd run it yourself.
 """
 
 from __future__ import annotations
@@ -24,6 +23,7 @@ from ..ui.renderer import console, display_api_key_help, display_dim, display_er
 
 _MAX_CODE_CHARS = 12000
 _TIMEOUT_SECONDS = 5
+_MAX_ROUNDS = 10
 
 DARE_SYSTEM = (
     "You are the Nietzschian Debugger in PREDICT mode, in Nietzsche's voice. Given "
@@ -34,6 +34,9 @@ DARE_SYSTEM = (
     "from the function's name — an edge case, empty input, a boundary, an early "
     "return, a falsy default, a surprising type. Avoid softballs whose answer is "
     "obvious.\n\n"
+    "VOICE: aphoristic, metaphoric, and gleeful — you DELIGHT in the trap you lay. "
+    "Never a flat quiz question ('what does f() return?'); make them feel the dare, "
+    "with menace and a grin.\n\n"
     "Output EXACTLY two lines and nothing else:\n"
     "DARE: <2-3 cutting sentences in Nietzsche's voice, then one precise question "
     "naming the exact call, e.g. what does slugify('  Hi  ') return?>\n"
@@ -45,23 +48,34 @@ JUDGE_SYSTEM = (
     "You are the Nietzschian Debugger in PREDICT mode, in Nietzsche's voice. You "
     "dared the developer to predict what their code does; the code has now been RUN "
     "and you are told the REAL result — that is the truth, trust it over any "
-    "reasoning of your own. Compare their prediction to the real result:\n"
-    "- If they were RIGHT: say so in ONE sharp line. Do NOT flatter, and do NOT "
-    "invent a flaw, a lesson, or a 'but' that isn't there. If the case was easy, "
-    "say it was easy and dare them toward a harder truth. Never manufacture a gap.\n"
-    "- If they were WRONG: in two or three merciless sentences, name the EXACT thing "
-    "they misread — the line, the branch, the assumption — and what that gap reveals "
-    "about how they read code.\n"
-    "Never apologise, never hedge, never pad."
+    "reasoning of your own.\n"
+    "Your FIRST line must be exactly one of: 'MATCH: yes' (their prediction matched "
+    "the real result) or 'MATCH: no' (it did not). Then a blank line, then:\n"
+    "- If MATCH yes: ONE sharp line. Do NOT flatter, do NOT invent a flaw or a 'but' "
+    "that isn't there. If the case was easy, say it was easy.\n"
+    "- If MATCH no: two or three merciless sentences naming the EXACT thing they "
+    "misread — the line, the branch, the assumption — and what the gap reveals.\n"
+    "When they miss, RELISH it — wound to elevate, with a laugh, never a lecture; "
+    "there is sunlight in the cut. Never apologise, never hedge, never pad."
+)
+
+REPORT_SYSTEM = (
+    "You are the Nietzschian Debugger delivering a PROOF OF UNDERSTANDING verdict in "
+    "Nietzsche's voice, after several prediction rounds on the developer's own code. "
+    "You are given each round: the function, whether they were right, and (if wrong) "
+    "the blind spot. Write 2-4 sentences. State how many they got right out of the "
+    "total. Then name the PATTERN in their misses — the recurring KIND of thing they "
+    "misread (early returns, falsy defaults, mutation, types, boundaries, empty "
+    "input, stripped whitespace). If they missed nothing, say so and name the kind of "
+    "code that would actually trip them. NEVER give a percentage or a grade — name "
+    "the pattern, not a number. Aphoristic and a little exultant — this is their "
+    "reckoning; make it ring, with wit and no mercy for comfort. End with one line "
+    "they will carry."
 )
 
 
 def _module_spec(file_path: str) -> tuple[str, str | None]:
-    """Return (dir_to_put_on_sys_path, dotted_module_name) so relative imports work.
-
-    Walks up through package dirs (those with __init__.py). For a plain script the
-    module is just its stem.
-    """
+    """Return (dir_for_sys_path, dotted_module_name) so relative imports work."""
     p = Path(file_path).resolve()
     if p.suffix != ".py":
         return str(p.parent), None
@@ -90,30 +104,6 @@ except Exception as e:
     print(json.dumps({"stage": "ran", "raised": type(e).__name__ + ": " + str(e)}))
 """
 
-
-def execute_call(syspath: str, module: str, func: str, args: list) -> dict:
-    """Run module.func(*args) in a separate process with a timeout. Returns a dict:
-    {stage: "ran", returned|raised: str} on execution, or {stage: "setup", error} otherwise.
-    """
-    payload = json.dumps({"syspath": syspath, "module": module, "func": func, "args": args})
-    try:
-        proc = subprocess.run(
-            [sys.executable, "-c", _RUNNER],
-            input=payload,
-            capture_output=True,
-            text=True,
-            timeout=_TIMEOUT_SECONDS,
-        )
-    except subprocess.TimeoutExpired:
-        return {"stage": "setup", "error": f"timed out after {_TIMEOUT_SECONDS}s (possible infinite loop)"}
-    for line in reversed((proc.stdout or "").strip().splitlines()):
-        try:
-            return json.loads(line)
-        except Exception:
-            continue
-    return {"stage": "setup", "error": (proc.stderr or "no output from the call").strip()[:200]}
-
-
 _CHECK = r"""
 import sys, json, importlib
 p = json.load(sys.stdin)
@@ -126,28 +116,40 @@ except Exception:
 """
 
 
-def is_callable_top_level(syspath: str, module: str, func: str) -> bool:
-    """True if `func` is a directly-callable top-level name in the module.
-
-    Guards against the model daring with a method or something needing an object.
-    """
-    payload = json.dumps({"syspath": syspath, "module": module, "func": func})
+def _run_subprocess(script: str, payload: dict) -> dict | None:
     try:
         proc = subprocess.run(
-            [sys.executable, "-c", _CHECK], input=payload, capture_output=True, text=True, timeout=_TIMEOUT_SECONDS
+            [sys.executable, "-c", script],
+            input=json.dumps(payload),
+            capture_output=True,
+            text=True,
+            timeout=_TIMEOUT_SECONDS,
         )
     except subprocess.TimeoutExpired:
-        return False
+        return {"stage": "setup", "error": f"timed out after {_TIMEOUT_SECONDS}s"}
     for line in reversed((proc.stdout or "").strip().splitlines()):
         try:
-            return bool(json.loads(line).get("ok"))
+            return json.loads(line)
         except Exception:
             continue
-    return False
+    return None
+
+
+def execute_call(syspath: str, module: str, func: str, args: list) -> dict:
+    """Run module.func(*args) in a separate process. Returns {stage: ran, returned|raised}
+    or {stage: setup, error}."""
+    out = _run_subprocess(_RUNNER, {"syspath": syspath, "module": module, "func": func, "args": args})
+    return out or {"stage": "setup", "error": "no output from the call"}
+
+
+def is_callable_top_level(syspath: str, module: str, func: str) -> bool:
+    """True if `func` is a directly callable top-level name in the module."""
+    out = _run_subprocess(_CHECK, {"syspath": syspath, "module": module, "func": func})
+    return bool(out and out.get("ok"))
 
 
 def _parse_dare(text: str) -> tuple[str, dict | None]:
-    """Split the model output into (human dare, {function, args}) ; call is None if unparseable."""
+    """Split model output into (human dare, {function, args})."""
     call = None
     match = re.search(r"CALL:\s*(\{.*\})", text, re.DOTALL)
     dare = text
@@ -166,8 +168,120 @@ def _parse_dare(text: str) -> tuple[str, dict | None]:
     return dare, call
 
 
-def predict_command(file_path: str) -> None:
-    """Run one predict round: dare -> your guess -> the REAL (executed) result."""
+def _parse_match(text: str) -> tuple[bool | None, str]:
+    """Pull a leading 'MATCH: yes|no' tag. Returns (correct_or_None, clean_text)."""
+    m = re.match(r"\s*MATCH:\s*(yes|no)\b[.:]?", text, re.IGNORECASE)
+    if not m:
+        return None, text
+    return m.group(1).lower() == "yes", text[m.end():].lstrip("\n .")
+
+
+def _run_round(code: str, file_path: str, model: str, syspath: str, module: str, avoid: list[str]) -> dict | None:
+    """One dare → guess → executed truth → verdict. Returns the round result or None
+    (developer quit, or no runnable dare could be found)."""
+    avoid_note = (
+        f"\n\nDo NOT choose any of these functions (already used): {', '.join(avoid)}."
+        if avoid
+        else ""
+    )
+    user_msg = f"The file ({file_path}):\n\n{code[:_MAX_CODE_CHARS]}{avoid_note}"
+
+    dare: str | None = None
+    call: dict | None = None
+    retry = ""
+    for _ in range(3):
+        try:
+            raw = call_llm(DARE_SYSTEM + retry, [{"role": "user", "content": user_msg}], model)
+        except Exception as error:
+            display_error(f"predict ended unexpectedly: {error}")
+            return None
+        parsed_dare, parsed_call = _parse_dare(raw)
+        if (
+            parsed_call
+            and parsed_call.get("function")
+            and parsed_call["function"] not in avoid
+            and is_callable_top_level(syspath, module, parsed_call["function"])
+        ):
+            dare, call = parsed_dare, parsed_call
+            break
+        retry = (
+            "\n\nYour previous pick was not a directly callable top-level function, "
+            "or was already used. Choose a plain, unused module-level function."
+        )
+    if not call:
+        return None
+
+    new_line()
+    print(dare)
+    new_line()
+    try:
+        guess = input("your prediction > ").strip()
+    except (EOFError, KeyboardInterrupt):
+        return None
+    if not guess:
+        return None
+
+    outcome = execute_call(syspath, module, call["function"], call.get("args", []))
+    if outcome.get("stage") == "setup":
+        display_error(f"Couldn't run {call['function']}(...): {outcome['error']}")
+        return None
+    truth = f"returned {outcome['returned']}" if "returned" in outcome else f"raised {outcome['raised']}"
+
+    try:
+        verdict_raw = call_llm(
+            JUDGE_SYSTEM,
+            [
+                {
+                    "role": "user",
+                    "content": (
+                        f"The dare: {dare}\n\n"
+                        f"The call: {call['function']}({', '.join(map(repr, call.get('args', [])))})\n"
+                        f"The REAL result (from running it): {truth}\n\n"
+                        f"The developer predicted: {guess}"
+                    ),
+                }
+            ],
+            model,
+        )
+    except Exception as error:
+        display_error(f"predict ended unexpectedly: {error}")
+        return None
+
+    correct, verdict = _parse_match(verdict_raw)
+    new_line()
+    print(verdict.strip())
+    new_line()
+    display_dim(f"Actual result (executed): {truth}")
+    new_line()
+    return {"function": call["function"], "correct": correct, "verdict": verdict.strip()}
+
+
+def _pou_report(results: list[dict], model: str) -> None:
+    total = len(results)
+    right = sum(1 for r in results if r["correct"] is True)
+    lines = [
+        f"- {r['function']}: RIGHT" if r["correct"] else f"- {r['function']}: WRONG — {r['verdict'][:240]}"
+        for r in results
+    ]
+    report = None
+    try:
+        report = call_llm(
+            REPORT_SYSTEM,
+            [{"role": "user", "content": f"Rounds: {total}. Right: {right} of {total}.\n" + "\n".join(lines)}],
+            model,
+        )
+    except Exception:
+        report = None
+
+    new_line()
+    console.print("[bold cyan]Proof of Understanding[/bold cyan]")
+    new_line()
+    print((report or f"{right} of {total} predicted correctly.").strip())
+    new_line()
+
+
+def predict_command(file_path: str, rounds: int = 3) -> None:
+    """Run `rounds` predict rounds against a file, then a Proof-of-Understanding report."""
     try:
         with open(file_path, "r", encoding="utf-8") as handle:
             code = handle.read()
@@ -188,94 +302,23 @@ def predict_command(file_path: str) -> None:
             sys.exit(1)
 
     model = get_conversation_model()
-    console.print("\n[bold cyan]Nietzschian Debugger[/bold cyan] [dim][predict mode][/dim]\n")
-
     syspath, module = _module_spec(file_path)
     if module is None:
         module = Path(file_path).stem
 
-    # Dare with a call we can actually RUN. If the model picks a method or anything
-    # not callable at top level, re-dare (up to a few tries) — no dud dares.
-    user_msg = f"The file ({file_path}):\n\n{code[:_MAX_CODE_CHARS]}"
-    dare: str | None = None
-    call: dict | None = None
-    retry = ""
-    for _ in range(3):
-        try:
-            raw = call_llm(DARE_SYSTEM + retry, [{"role": "user", "content": user_msg}], model)
-        except Exception as error:
-            display_error(f"predict ended unexpectedly: {error}")
-            sys.exit(1)
-        parsed_dare, parsed_call = _parse_dare(raw)
-        if (
-            parsed_call
-            and parsed_call.get("function")
-            and is_callable_top_level(syspath, module, parsed_call["function"])
-        ):
-            dare, call = parsed_dare, parsed_call
+    console.print("\n[bold cyan]Nietzschian Debugger[/bold cyan] [dim][predict mode][/dim]\n")
+
+    rounds = max(1, min(rounds, _MAX_ROUNDS))
+    avoid: list[str] = []
+    results: list[dict] = []
+    for i in range(1, rounds + 1):
+        if rounds > 1:
+            display_dim(f"── Round {i} of {rounds} ──")
+        result = _run_round(code, file_path, model, syspath, module, avoid)
+        if result is None:
             break
-        retry = (
-            "\n\nYour previous pick was NOT a directly callable top-level function "
-            "(no methods, nothing that needs an object constructed). Choose a plain "
-            "module-level function."
-        )
+        avoid.append(result["function"])
+        results.append(result)
 
-    if not call:
-        display_error(
-            "Couldn't get a runnable challenge — try a file with simple, top-level "
-            "functions (or a stronger model)."
-        )
-        return
-
-    new_line()
-    print(dare)
-    new_line()
-    try:
-        guess = input("your prediction > ").strip()
-    except (EOFError, KeyboardInterrupt):
-        return
-    if not guess:
-        new_line()
-        console.print("[dim]No prediction, no reckoning. Come back when you'll commit to an answer.[/dim]")
-        return
-
-    # The truth comes from RUNNING the code, never from the model.
-    outcome = execute_call(syspath, module, call["function"], call.get("args", []))
-
-    if outcome.get("stage") == "setup":
-        display_error(
-            f"Couldn't run {call['function']}(...): {outcome['error']}. "
-            "Pick a function with simple literal arguments."
-        )
-        return
-
-    truth = (
-        f"returned {outcome['returned']}" if "returned" in outcome else f"raised {outcome['raised']}"
-    )
-
-    try:
-        verdict = call_llm(
-            JUDGE_SYSTEM,
-            [
-                {
-                    "role": "user",
-                    "content": (
-                        f"The dare: {dare}\n\n"
-                        f"The call: {call['function']}({', '.join(map(repr, call.get('args', [])))})\n"
-                        f"The REAL result (from running it): {truth}\n\n"
-                        f"The developer predicted: {guess}"
-                    ),
-                }
-            ],
-            model,
-        )
-    except Exception as error:
-        display_error(f"predict ended unexpectedly: {error}")
-        sys.exit(1)
-
-    new_line()
-    print(verdict.strip())
-    new_line()
-    # Show the ground truth plainly — so a fuzzy verdict can never misteach you.
-    display_dim(f"Actual result (executed): {truth}")
-    new_line()
+    if results:
+        _pou_report(results, model)

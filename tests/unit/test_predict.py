@@ -59,6 +59,16 @@ def test_guard_rejects_methods_and_accepts_functions() -> None:
     assert predict.is_callable_top_level(syspath, module, "observe") is False
 
 
+def test_parse_match_tag() -> None:
+    correct, verdict = predict._parse_match("MATCH: no\n\nWrong — you skipped the early return.")
+    assert correct is False
+    assert verdict.startswith("Wrong")
+    correct, _ = predict._parse_match("MATCH: yes\nRight, and it was easy.")
+    assert correct is True
+    correct, text = predict._parse_match("no tag at all?")
+    assert correct is None and text == "no tag at all?"
+
+
 def test_execution_captures_a_raise() -> None:
     # A function that raises is a legitimate "behaviour" — captured, not crashed.
     syspath, module = predict._module_spec("nietzschian_debugger/llm/validator.py")
