@@ -59,6 +59,16 @@ def test_guard_rejects_methods_and_accepts_functions() -> None:
     assert predict.is_callable_top_level(syspath, module, "observe") is False
 
 
+def test_parse_dare_strips_label_even_after_a_preamble() -> None:
+    # Regression: the 7B wrote a gleeful line BEFORE "DARE:", so the label wasn't
+    # leading and leaked into the question.
+    text = 'I bet you a golden coin!\n\nDARE: what does f() return?\nCALL: {"function": "f", "args": []}'
+    dare, call = predict._parse_dare(text)
+    assert call == {"function": "f", "args": []}
+    assert "DARE:" not in dare
+    assert "golden coin" in dare and "what does f() return" in dare
+
+
 def test_parse_match_tag() -> None:
     correct, verdict = predict._parse_match("MATCH: no\n\nWrong — you skipped the early return.")
     assert correct is False
