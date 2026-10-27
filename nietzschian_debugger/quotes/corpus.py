@@ -58,9 +58,9 @@ QUOTES: list[Quote] = [
     # demands evidence does not get to misquote its own philosopher)
     Quote(text="The most common sort of lie is the one by which a man deceives himself.", philosopher="Friedrich Nietzsche", context="avoidance", source="The Antichrist"),
     Quote(text="I mistrust all systematizers and avoid them; the will to a system is a lack of integrity.", philosopher="Friedrich Nietzsche", context="avoidance", source="Twilight of the Idols"),
-    Quote(text="This is my way; where is yours? For the way -- that does not exist.", philosopher="Friedrich Nietzsche", context="strategy", source="Thus Spoke Zarathustra"),
-    Quote(text="He who cannot obey himself will be commanded.", philosopher="Friedrich Nietzsche", context="strategy", source="Thus Spoke Zarathustra"),
-    Quote(text="He who climbs upon the highest mountains laughs at all tragedies, real or imaginary.", philosopher="Friedrich Nietzsche", context="overwhelm", source="Thus Spoke Zarathustra"),
+    Quote(text="This is my way; where is yours? For the way -- that does not exist.", philosopher="Friedrich Nietzsche", context="avoidance", source="Thus Spoke Zarathustra"),
+    Quote(text="He who cannot obey himself will be commanded.", philosopher="Friedrich Nietzsche", context="avoidance", source="Thus Spoke Zarathustra"),
+    Quote(text="He who climbs upon the highest mountains laughs at all tragedies, real or imaginary.", philosopher="Friedrich Nietzsche", context="perseverance", source="Thus Spoke Zarathustra"),
     Quote(text="One repays a teacher badly if one always remains nothing but a pupil.", philosopher="Friedrich Nietzsche", context="victory", source="Thus Spoke Zarathustra"),
     Quote(text="In the mountains of truth you never climb in vain: either you reach a higher point today, or you train your strength to climb higher tomorrow.", philosopher="Friedrich Nietzsche", context="perseverance", source="Human, All Too Human"),
 ]
