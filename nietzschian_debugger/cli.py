@@ -45,6 +45,16 @@ def demo() -> None:
     run_demo()
 
 
+@cli.command()
+@click.option("--id", "session_id", default=None, help="Session id to share (default: the most recent).")
+@click.option("-o", "--out", "out_path", default=None, help="Write the markdown to a file instead of stdout.")
+def share(session_id: str, out_path: str) -> None:
+    """Export a finished session as shareable markdown."""
+    from .commands.share import share_session
+
+    asyncio.run(share_session(session_id, out_path))
+
+
 def main() -> None:
     """Main entry point."""
     # Windows consoles often default to cp1252, which cannot encode the
