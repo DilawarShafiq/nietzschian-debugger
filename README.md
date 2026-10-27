@@ -77,40 +77,45 @@ nietzschian debug "Auth fails in ./src/middleware/auth.ts"
 ## How a Session Looks
 
 ```
-  Nietzschian Debugger v0.2.0 — intensity: nietzsche
+$ nietzschian debug "login endpoint returns 403, but only for users who signed up before last week; new signups work; same code path; Node/Express"
 
-You: My login endpoint returns 403 for some users
+Nietzschian Debugger [Nietzsche mode]
 
-Nietzschian: You say "some users." That's vague. What separates
-             the ones who fail from the ones who don't?
 
-You: I'm not sure, it seems random
+[Turn 1]
+You said "same code path" — but the data is screaming that something
+changed between last week and today.
 
-Nietzschian: "Random" is the word we use when we haven't looked
-             hard enough. What do the server logs say for the 403
-             responses? Go look. I'll wait.
+What is different about the user record itself between those who signed
+up before last week and those who signed up after?
 
-You: Let me check... oh, they all have expired JWT tokens
+> I assumed the records were identical. Let me actually compare one.
 
-Nietzschian: Now we're getting somewhere. What changed in your
-             auth system last week that an old session wouldn't
-             have survived?
+[Turn 2]
+"Assumed." There is the word you built a week of debugging on. Stop
+assuming and read two rows side by side.
 
-You: ... oh. We changed the token TTL last week and didn't
-     invalidate existing sessions.
+What field exists on an old account that a new signup was never given?
 
-Nietzschian: There it is. You didn't need me to tell you — you
-             needed to be forced to look.
+> ...the old ones carry a legacy role claim the new ones don't, and the
+  auth middleware rejects any token without it.
 
-Session Complete — 4 questions to root cause (Solved)
+[Turn 3]
+There it is. The bug was never in the code — it was in your certainty
+that "same code path" meant "same data." You stopped looking exactly
+where the difference lived.
+
+> found it
+
+Session Complete -- 3 questions to root cause (Solved)
 
 Your Debugging Profile:
-┣ Assumption-checking    ██████████  strong
+┣ Assumption-checking    ████████░░  strong
 ┣ Evidence-gathering     ██████░░░░  moderate
 ┗ Root cause speed       ████████░░  strong
 
 "Man is something that shall be overcome."
- — Friedrich Nietzsche
+ -- Friedrich Nietzsche
 ```
 
 ## Session Commands
