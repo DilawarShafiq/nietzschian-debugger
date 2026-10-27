@@ -35,9 +35,13 @@ class SessionLoopResult:
     outcome: SessionOutcome
 
 
-async def run_session_loop(session: Session) -> SessionLoopResult:
+async def run_session_loop(
+    session: Session, preloaded_context: Optional[dict[str, str]] = None
+) -> SessionLoopResult:
     """Run the interactive debugging session loop."""
-    code_files: dict[str, str] = {}
+    # preloaded_context seeds extra material (e.g. the git diff) into the context
+    # the LLM sees, so it can interrogate what the developer actually changed.
+    code_files: dict[str, str] = dict(preloaded_context) if preloaded_context else {}
     rolling_summary: Optional[str] = None
     lifeline_offered = False
 

@@ -29,12 +29,24 @@ def cli() -> None:
     default="nietzsche",
     help="Questioning intensity: socrates, nietzsche, zarathustra",
 )
-def debug(problem: str, intensity: str) -> None:
+@click.option(
+    "--diff",
+    "use_diff",
+    is_flag=True,
+    help="Feed your uncommitted git changes as context -- it interrogates what you actually changed.",
+)
+@click.option(
+    "--since",
+    "diff_since",
+    default=None,
+    help="With --diff, diff against this ref (commit/branch) instead of HEAD.",
+)
+def debug(problem: str, intensity: str, use_diff: bool, diff_since: str) -> None:
     """Start an interactive debugging session.
 
     PROBLEM is the description of the bug or problem to debug.
     """
-    asyncio.run(debug_command(problem, intensity))  # type: ignore[arg-type]
+    asyncio.run(debug_command(problem, intensity, use_diff, diff_since))  # type: ignore[arg-type]
 
 
 @cli.command()
