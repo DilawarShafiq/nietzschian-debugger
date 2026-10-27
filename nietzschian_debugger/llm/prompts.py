@@ -159,12 +159,14 @@ def get_system_prompt(
 
     adaptive_section = (
         "<state_read>\n"
-        "On the FIRST line of your reply, emit exactly one tag giving your read of "
-        "where this developer is RIGHT NOW, then your normal response beneath it:\n"
-        "[state: confused]  — they don't yet know what they mean (vague, undefined terms)\n"
-        "[state: avoiding]  — they're hiding in an assumption or comfort they won't question\n"
-        "[state: defeated]  — they're ready to give up\n"
-        "Emit the tag silently; never explain or mention it.\n"
+        "Begin your reply with ONE line, exactly one of:\n"
+        "  STATE: confused\n"
+        "  STATE: avoiding\n"
+        "  STATE: defeated\n"
+        "It is your read of the developer right now — confused = vague, undefined "
+        "terms; avoiding = clinging to an assumption; defeated = ready to quit. "
+        "Then a blank line, then your question. Put nothing else on the STATE line, "
+        "and never mention or explain it.\n"
         "</state_read>"
         if adaptive
         else ""
