@@ -51,6 +51,14 @@ def test_execution_is_ground_truth() -> None:
     assert out["returned"] == "('avoiding', '')"
 
 
+def test_guard_rejects_methods_and_accepts_functions() -> None:
+    # The 7B dared with `observe` — a METHOD of LensTracker, not runnable alone.
+    # The guard must reject it and accept a real top-level function.
+    syspath, module = predict._module_spec("nietzschian_debugger/core/lens_state.py")
+    assert predict.is_callable_top_level(syspath, module, "parse_state_tag") is True
+    assert predict.is_callable_top_level(syspath, module, "observe") is False
+
+
 def test_execution_captures_a_raise() -> None:
     # A function that raises is a legitimate "behaviour" — captured, not crashed.
     syspath, module = predict._module_spec("nietzschian_debugger/llm/validator.py")

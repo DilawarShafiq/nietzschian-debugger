@@ -109,6 +109,38 @@ def execute_call(syspath: str, module: str, func: str, args: list) -> dict:
     return {"stage": "setup", "error": (proc.stderr or "no output from the call").strip()[:200]}
 
 
+_CHECK = r"""
+import sys, json, importlib
+p = json.load(sys.stdin)
+try:
+    sys.path.insert(0, p["syspath"])
+    mod = importlib.import_module(p["module"])
+    print(json.dumps({"ok": callable(getattr(mod, p["func"], None))}))
+except Exception:
+    print(json.dumps({"ok": False}))
+"""
+
+
+def is_callable_top_level(syspath: str, module: str, func: str) -> bool:
+    """True if `func` is a directly-callable top-level name in the module.
+
+    Guards against the model daring with a method or something needing an object.
+    """
+    payload = json.dumps({"syspath": syspath, "module": module, "func": func})
+    try:
+        proc = subprocess.run(
+            [sys.executable, "-c", _CHECK], input=payload, capture_output=True, text=True, timeout=_TIMEOUT_SECONDS
+        )
+    except subprocess.TimeoutExpired:
+        return False
+    for line in reversed((proc.stdout or "").strip().splitlines()):
+        try:
+            return bool(json.loads(line).get("ok"))
+        except Exception:
+            continue
+    return False
+
+
 def _parse_dare(text: str) -> tuple[str, dict | None]:
     """Split the model output into (human dare, {function, args}) ; call is None if unparseable."""
     call = None
@@ -153,21 +185,40 @@ def predict_command(file_path: str) -> None:
     model = get_conversation_model()
     console.print("\n[bold cyan]Nietzschian Debugger[/bold cyan] [dim][predict mode][/dim]\n")
 
-    try:
-        raw = call_llm(
-            DARE_SYSTEM,
-            [{"role": "user", "content": f"The file ({file_path}):\n\n{code[:_MAX_CODE_CHARS]}"}],
-            model,
-        )
-    except Exception as error:
-        display_error(f"predict ended unexpectedly: {error}")
-        sys.exit(1)
+    syspath, module = _module_spec(file_path)
+    if module is None:
+        module = Path(file_path).stem
 
-    dare, call = _parse_dare(raw)
-    if not call or "function" not in call:
+    # Dare with a call we can actually RUN. If the model picks a method or anything
+    # not callable at top level, re-dare (up to a few tries) — no dud dares.
+    user_msg = f"The file ({file_path}):\n\n{code[:_MAX_CODE_CHARS]}"
+    dare: str | None = None
+    call: dict | None = None
+    retry = ""
+    for _ in range(3):
+        try:
+            raw = call_llm(DARE_SYSTEM + retry, [{"role": "user", "content": user_msg}], model)
+        except Exception as error:
+            display_error(f"predict ended unexpectedly: {error}")
+            sys.exit(1)
+        parsed_dare, parsed_call = _parse_dare(raw)
+        if (
+            parsed_call
+            and parsed_call.get("function")
+            and is_callable_top_level(syspath, module, parsed_call["function"])
+        ):
+            dare, call = parsed_dare, parsed_call
+            break
+        retry = (
+            "\n\nYour previous pick was NOT a directly callable top-level function "
+            "(no methods, nothing that needs an object constructed). Choose a plain "
+            "module-level function."
+        )
+
+    if not call:
         display_error(
-            "Couldn't get a runnable challenge from the model — try a file with "
-            "simple, callable functions (or a stronger model)."
+            "Couldn't get a runnable challenge — try a file with simple, top-level "
+            "functions (or a stronger model)."
         )
         return
 
@@ -184,9 +235,6 @@ def predict_command(file_path: str) -> None:
         return
 
     # The truth comes from RUNNING the code, never from the model.
-    syspath, module = _module_spec(file_path)
-    if module is None:
-        module = Path(file_path).stem
     outcome = execute_call(syspath, module, call["function"], call.get("args", []))
 
     if outcome.get("stage") == "setup":
