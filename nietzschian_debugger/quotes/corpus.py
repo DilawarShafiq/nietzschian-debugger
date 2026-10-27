@@ -42,10 +42,15 @@ QUOTES: list[Quote] = [
     Quote(text="Man is something that shall be overcome. What have you done to overcome him?", philosopher="Friedrich Nietzsche", context="victory", source="Thus Spoke Zarathustra"),
     Quote(text="The impediment to action advances action. What stands in the way becomes the way.", philosopher="Marcus Aurelius", context="victory", source="Meditations"),
     Quote(text="It is not the mountain we conquer, but ourselves.", philosopher="Edmund Hillary", context="victory", source="Attributed"),
+    Quote(text="No victor believes in chance.", philosopher="Friedrich Nietzsche", context="victory", source="The Gay Science"),
+    Quote(text="The secret of reaping the greatest fruitfulness and the greatest enjoyment from existence is to live dangerously.", philosopher="Friedrich Nietzsche", context="victory", source="The Gay Science"),
 
     # Defeat / perseverance quotes
     Quote(text="Our greatest glory is not in never falling, but in rising every time we fall.", philosopher="Confucius", context="perseverance", source="Analects"),
     Quote(text="Fall seven times, stand up eight.", philosopher="Japanese Proverb", context="perseverance", source="Traditional"),
     Quote(text="The only way to do great work is to love what you do.", philosopher="Steve Jobs", context="perseverance", source="Stanford Commencement"),
     Quote(text="What we achieve inwardly will change outer reality.", philosopher="Plutarch", context="perseverance", source="Moralia"),
+    Quote(text="He who would learn to fly one day must first learn to stand and walk and run and climb and dance; one cannot fly into flying.", philosopher="Friedrich Nietzsche", context="perseverance", source="Thus Spoke Zarathustra"),
+    Quote(text="What is great in man is that he is a bridge and not an end.", philosopher="Friedrich Nietzsche", context="perseverance", source="Thus Spoke Zarathustra"),
+    Quote(text="Become who you are.", philosopher="Friedrich Nietzsche", context="perseverance", source="The Gay Science"),
 ]

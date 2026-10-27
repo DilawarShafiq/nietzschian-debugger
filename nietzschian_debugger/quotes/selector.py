@@ -69,7 +69,13 @@ def select_quote(response: str) -> Optional[Quote]:
 
 
 def select_closing_quote(outcome: SessionOutcome) -> Quote:
-    """Select a closing quote based on session outcome."""
+    """Select a closing quote based on session outcome.
+
+    The final beat is the tool's signature, so prefer Nietzsche himself — fall
+    back to the wider corpus only if no Nietzsche quote fits the context. (The
+    mid-session quotes stay multi-voice on purpose; the closing line should not.)
+    """
     context: QuoteContext = "victory" if outcome == "solved" else "perseverance"
     matching = [q for q in QUOTES if q.context == context]
-    return random.choice(matching)
+    nietzsche = [q for q in matching if q.philosopher == "Friedrich Nietzsche"]
+    return random.choice(nietzsche or matching)
