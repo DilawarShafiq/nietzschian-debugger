@@ -14,7 +14,7 @@ class TestGetSystemPrompt:
         assert "<intensity_rules>" in prompt
         assert "<session_context>" in prompt
         assert "My API is slow" in prompt
-        assert "gentle" in prompt
+        assert "elenchus" in prompt
 
     def test_produces_prompt_for_nietzsche(self) -> None:
         prompt = get_system_prompt("nietzsche", "My API is slow")
@@ -30,7 +30,7 @@ class TestGetSystemPrompt:
         assert "<persona>" in prompt
         assert "<behavioral_constraints>" in prompt
         assert "<intensity_rules>" in prompt
-        assert "brutal" in prompt
+        assert "affirmation" in prompt
 
     def test_includes_code_context_when_provided(self) -> None:
         prompt = get_system_prompt("nietzsche", "Bug here", "1: const x = 1;\n2: const y = x + 1;")
