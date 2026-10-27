@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from typing import Callable, Optional
 
 import anthropic
@@ -11,6 +12,17 @@ from . import providers
 
 HAIKU_MODEL = "claude-haiku-4-5-20251001"
 SONNET_MODEL = "claude-sonnet-4-6"
+
+# Reasoning models sometimes inline their chain-of-thought in the response as
+# <think>…</think> (Ollama separates it into a field, but other OpenAI-compatible
+# servers don't). Strip it so the oracle's thinking never shows — and never
+# spoils a `predict` by reasoning the answer out loud.
+_REASONING_TAGS = re.compile(r"<(think|thinking|reasoning)>.*?</\1>", re.DOTALL | re.IGNORECASE)
+
+
+def _strip_reasoning(text: str) -> str:
+    """Remove inline <think>…</think> reasoning blocks from a model response."""
+    return _REASONING_TAGS.sub("", text).strip()
 
 _client: Optional[anthropic.Anthropic] = None
 _analyzed_files: set[str] = set()

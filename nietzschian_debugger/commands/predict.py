@@ -13,13 +13,14 @@ the way you'd run it yourself.
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
 from pathlib import Path
 
 from ..llm.client import call_llm, get_client, get_conversation_model, MissingApiKeyError
-from ..ui.renderer import console, display_api_key_help, display_dim, display_error, new_line
+from ..ui.renderer import console, display_api_key_help, display_dim, display_error, new_line, thinking
 
 _MAX_CODE_CHARS = 12000
 _TIMEOUT_SECONDS = 5
@@ -117,13 +118,19 @@ except Exception:
 
 
 def _run_subprocess(script: str, payload: dict) -> dict | None:
+    # Force the child to UTF-8 and decode its output as UTF-8 with errors replaced,
+    # so code that prints emoji or accented text can't crash the reader with a
+    # Windows cp1252 UnicodeDecodeError. We only parse our own ASCII JSON line.
+    child_env = {**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"}
     try:
         proc = subprocess.run(
             [sys.executable, "-c", script],
             input=json.dumps(payload),
             capture_output=True,
-            text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=_TIMEOUT_SECONDS,
+            env=child_env,
         )
     except subprocess.TimeoutExpired:
         return {"stage": "setup", "error": f"timed out after {_TIMEOUT_SECONDS}s"}
@@ -207,7 +214,8 @@ def _run_round(code: str, file_path: str, model: str, syspath: str, module: str,
     retry = ""
     for _ in range(3):
         try:
-            raw = call_llm(DARE_SYSTEM + retry, [{"role": "user", "content": user_msg}], model)
+            with thinking():
+                raw = call_llm(DARE_SYSTEM + retry, [{"role": "user", "content": user_msg}], model)
         except Exception as error:
             display_error(f"predict ended unexpectedly: {error}")
             return None
@@ -244,21 +252,22 @@ def _run_round(code: str, file_path: str, model: str, syspath: str, module: str,
     truth = f"returned {outcome['returned']}" if "returned" in outcome else f"raised {outcome['raised']}"
 
     try:
-        verdict_raw = call_llm(
-            JUDGE_SYSTEM,
-            [
-                {
-                    "role": "user",
-                    "content": (
-                        f"The dare: {dare}\n\n"
-                        f"The call: {call['function']}({', '.join(map(repr, call.get('args', [])))})\n"
-                        f"The REAL result (from running it): {truth}\n\n"
-                        f"The developer predicted: {guess}"
-                    ),
-                }
-            ],
-            model,
-        )
+        with thinking():
+            verdict_raw = call_llm(
+                JUDGE_SYSTEM,
+                [
+                    {
+                        "role": "user",
+                        "content": (
+                            f"The dare: {dare}\n\n"
+                            f"The call: {call['function']}({', '.join(map(repr, call.get('args', [])))})\n"
+                            f"The REAL result (from running it): {truth}\n\n"
+                            f"The developer predicted: {guess}"
+                        ),
+                    }
+                ],
+                model,
+            )
     except Exception as error:
         display_error(f"predict ended unexpectedly: {error}")
         return None
@@ -285,11 +294,12 @@ def _pou_report(results: list[dict], model: str) -> None:
     ]
     report = None
     try:
-        report = call_llm(
-            REPORT_SYSTEM,
-            [{"role": "user", "content": f"Rounds: {total}. Right: {right} of {total}.\n" + "\n".join(lines)}],
-            model,
-        )
+        with thinking("Reckoning"):
+            report = call_llm(
+                REPORT_SYSTEM,
+                [{"role": "user", "content": f"Rounds: {total}. Right: {right} of {total}.\n" + "\n".join(lines)}],
+                model,
+            )
     except Exception:
         report = None
 

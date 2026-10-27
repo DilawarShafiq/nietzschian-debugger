@@ -2,6 +2,27 @@
 
 All notable changes to this project are documented here.
 
+## [0.5.2] — 2026-10-28
+
+### Added
+- **A Nietzschian spinner.** While a model thinks, it shows a different word each
+  time — *"Revaluing…", "Gazing into the abyss…", "Tuning the fork…"* — instead of a
+  flat "Thinking…". The wait is in character now (`predict` and `roast`).
+- **"Choosing a local model" guidance in the README** — how to set up and switch
+  models (hosted keys, Ollama install + `ollama pull`), plus which model suits which
+  command: chat models for `roast`/`debug`, a *coding* model for `predict`.
+
+### Fixed
+- **`roast` is robust across model types.** A coding model asked to roast used to
+  answer with a `predict`-style JSON/`DARE:` blob; the prompt now forbids structured
+  output, and if a model still returns something structured or empty, it retries once
+  firmer before falling back. Reasoning models' inline `<think>…</think>` is stripped
+  everywhere (never shown, never spoils a `predict`).
+- **Windows Unicode crash.** `predict` (running your code) and `debug --diff` (reading
+  the git diff) decoded subprocess output as cp1252 on Windows and could crash with a
+  `UnicodeDecodeError` on any emoji or accented text. Both now decode as UTF-8 with
+  replacement, and `predict` runs the child in UTF-8 mode.
+
 ## [0.5.1] — 2026-10-28
 
 ### Fixed
