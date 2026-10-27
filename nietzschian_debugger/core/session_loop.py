@@ -66,21 +66,21 @@ async def run_session_loop(
         1,
     )
 
-    new_line()
-    display_dim("[Turn 1]")
-    opening_question = _generate_valid_question(
-        system_prompt,
-        [{"role": "user", "content": session.problem_description}],
-        model,
-        session.intensity,
-        session.problem_description,
-    )
-    print(opening_question)
-    new_line()
-
-    current_question = opening_question
-
     try:
+        new_line()
+        display_dim("[Turn 1]")
+        opening_question = _generate_valid_question(
+            system_prompt,
+            [{"role": "user", "content": session.problem_description}],
+            model,
+            session.intensity,
+            session.problem_description,
+        )
+        print(opening_question)
+        new_line()
+
+        current_question = opening_question
+
         while True:
             try:
                 raw_input = input("> ")
