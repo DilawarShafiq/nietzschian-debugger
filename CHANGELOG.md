@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here.
 
+## [0.2.4] — 2026-10-28
+
+### Fixed
+- **Every error path crashed instead of showing its message.** `display_error`
+  and `display_warning` passed `stderr=True` to Rich's `Console.print()`, which
+  does not accept it — so an invalid API key, a rate limit, or any caught session
+  error raised a `TypeError` traceback instead of the intended message. Errors now
+  render through a stderr-configured console.
+
 ## [0.2.3] — 2026-10-27
 
 ### Changed

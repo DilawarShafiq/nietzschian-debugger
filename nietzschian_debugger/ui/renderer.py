@@ -8,6 +8,9 @@ from rich.console import Console
 from rich.text import Text
 
 console = Console()
+# Rich routes stderr via a Console constructed with stderr=True — NOT via a
+# stderr= kwarg on .print() (which raises TypeError and crashed every error path).
+error_console = Console(stderr=True)
 
 
 def stream_to_terminal(text: str) -> None:
@@ -37,13 +40,13 @@ def display_dim(message: str) -> None:
 
 
 def display_error(message: str) -> None:
-    """Display an error message."""
-    console.print(f"[bold red]Error:[/bold red] [red]{message}[/red]", stderr=True)
+    """Display an error message on stderr."""
+    error_console.print(f"[bold red]Error:[/bold red] [red]{message}[/red]")
 
 
 def display_warning(message: str) -> None:
-    """Display a warning message."""
-    console.print(f"[yellow]{message}[/yellow]", stderr=True)
+    """Display a warning message on stderr."""
+    error_console.print(f"[yellow]{message}[/yellow]")
 
 
 def display_success(message: str) -> None:
