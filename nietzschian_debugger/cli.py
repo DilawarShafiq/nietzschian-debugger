@@ -37,6 +37,14 @@ def debug(problem: str, intensity: str) -> None:
     asyncio.run(debug_command(problem, intensity))  # type: ignore[arg-type]
 
 
+@cli.command()
+def demo() -> None:
+    """Watch a scripted session with no API key -- then run it on your own bug."""
+    from .commands.demo import run_demo
+
+    run_demo()
+
+
 def main() -> None:
     """Main entry point."""
     # Windows consoles often default to cp1252, which cannot encode the
