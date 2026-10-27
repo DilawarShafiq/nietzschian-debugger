@@ -259,6 +259,9 @@ def _run_round(code: str, file_path: str, model: str, syspath: str, module: str,
 
     correct, verdict = _parse_match(verdict_raw)
     verdict = _strip_fences(verdict)
+    if not verdict:
+        # Weak models sometimes emit the MATCH tag and no prose — never show blank.
+        verdict = "Right — that is exactly what it does." if correct else "Wrong. Look again at what you assumed."
     new_line()
     print(verdict)
     new_line()
