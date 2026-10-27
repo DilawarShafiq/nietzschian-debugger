@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented here.
 
+## [0.3.0] — 2026-10-28
+
+### Added
+- **`nietzschian demo`** — a scripted session you can run with no API key, no cost.
+- **`nietzschian share`** — export a finished session as clean, postable markdown.
+- **`debug --diff`** — feed your uncommitted git changes as context, so it
+  interrogates what you actually changed (`--since <ref>` to diff against a ref).
+- **Multi-model support (`--model`)** — Claude by default; or OpenAI, Gemini,
+  DeepSeek, Groq, Mistral, Together, OpenRouter, xAI, and local Ollama / LM Studio
+  (no key, no cost), plus a `custom` endpoint for any OpenAI-compatible API.
+  Install the extra with `pip install "nietzschian-debugger[providers]"`.
+
+### Fixed
+- Errors while generating the opening question now end the session cleanly
+  instead of raising a raw traceback (affects every provider).
+
 ## [0.2.4] — 2026-10-28
 
 ### Fixed

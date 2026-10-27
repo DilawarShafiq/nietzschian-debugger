@@ -7,6 +7,8 @@ from typing import Callable, Optional
 
 import anthropic
 
+from . import providers
+
 HAIKU_MODEL = "claude-haiku-4-5-20251001"
 SONNET_MODEL = "claude-sonnet-4-6"
 
@@ -34,6 +36,8 @@ def get_client() -> anthropic.Anthropic:
 
 def get_model_for_file(file_path: str) -> str:
     """Return Sonnet for first analysis of a file, Haiku for subsequent."""
+    if providers.active() is not None:
+        return providers.model_name()
     if file_path in _analyzed_files:
         return HAIKU_MODEL
     _analyzed_files.add(file_path)
@@ -42,6 +46,8 @@ def get_model_for_file(file_path: str) -> str:
 
 def get_conversation_model() -> str:
     """Return the model used for general conversation turns."""
+    if providers.active() is not None:
+        return providers.model_name()
     return HAIKU_MODEL
 
 
@@ -66,6 +72,8 @@ def stream_question(
     callbacks: StreamCallbacks,
 ) -> str:
     """Stream a question from the LLM, calling callbacks for each text chunk."""
+    if providers.active() is not None:
+        return providers.stream(system_prompt, messages, model, callbacks)
     client = get_client()
     full_text = ""
 
@@ -93,6 +101,8 @@ def count_tokens(
     model: str,
 ) -> int:
     """Count tokens for the given prompt and messages."""
+    if providers.active() is not None:
+        return providers.estimate_tokens(system_prompt, messages)
     client = get_client()
     result = client.messages.count_tokens(
         model=model,
@@ -108,6 +118,8 @@ def call_llm(
     model: str,
 ) -> str:
     """Make a non-streaming LLM call and return the text response."""
+    if providers.active() is not None:
+        return providers.complete(system_prompt, messages, model)
     client = get_client()
     response = client.messages.create(
         model=model,
