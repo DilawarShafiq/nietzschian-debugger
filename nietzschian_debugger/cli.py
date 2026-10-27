@@ -29,12 +29,51 @@ def cli() -> None:
     default="nietzsche",
     help="Questioning intensity: socrates, nietzsche, zarathustra",
 )
-def debug(problem: str, intensity: str) -> None:
+@click.option(
+    "--diff",
+    "use_diff",
+    is_flag=True,
+    help="Feed your uncommitted git changes as context -- it interrogates what you actually changed.",
+)
+@click.option(
+    "--since",
+    "diff_since",
+    default=None,
+    help="With --diff, diff against this ref (commit/branch) instead of HEAD.",
+)
+@click.option(
+    "--model",
+    "model_spec",
+    default=None,
+    help="LLM to use (default: Claude). e.g. openai:gpt-4o-mini, ollama:llama3, gemini:gemini-1.5-flash.",
+)
+def debug(problem: str, intensity: str, use_diff: bool, diff_since: str, model_spec: str) -> None:
     """Start an interactive debugging session.
 
     PROBLEM is the description of the bug or problem to debug.
     """
-    asyncio.run(debug_command(problem, intensity))  # type: ignore[arg-type]
+    from .llm import providers
+
+    providers.configure(model_spec)
+    asyncio.run(debug_command(problem, intensity, use_diff, diff_since))  # type: ignore[arg-type]
+
+
+@cli.command()
+def demo() -> None:
+    """Watch a scripted session with no API key -- then run it on your own bug."""
+    from .commands.demo import run_demo
+
+    run_demo()
+
+
+@cli.command()
+@click.option("--id", "session_id", default=None, help="Session id to share (default: the most recent).")
+@click.option("-o", "--out", "out_path", default=None, help="Write the markdown to a file instead of stdout.")
+def share(session_id: str, out_path: str) -> None:
+    """Export a finished session as shareable markdown."""
+    from .commands.share import share_session
+
+    asyncio.run(share_session(session_id, out_path))
 
 
 def main() -> None:

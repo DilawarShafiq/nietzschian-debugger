@@ -17,17 +17,26 @@ from ..scoring.skill_scorer import compute_skill_scores
 from ..scoring.growth_profile import compute_growth_profile
 from ..quotes.selector import select_closing_quote
 from ..ui.growth_display import render_growth_score
-from ..ui.renderer import display_error, display_api_key_help
+from ..ui.renderer import display_error, display_warning, display_api_key_help
 
 
-async def debug_command(problem_description: str, intensity: Intensity) -> None:
+async def debug_command(
+    problem_description: str,
+    intensity: Intensity,
+    use_diff: bool = False,
+    diff_since: "str | None" = None,
+) -> None:
     """Run a full debugging session."""
-    # Validate API key
-    try:
-        get_client()
-    except MissingApiKeyError:
-        display_api_key_help()
-        sys.exit(1)
+    # Validate API key (Anthropic path only; other providers validate their own
+    # key lazily on the first call).
+    from ..llm import providers
+
+    if providers.active() is None:
+        try:
+            get_client()
+        except MissingApiKeyError:
+            display_api_key_help()
+            sys.exit(1)
 
     # Validate problem description
     if not problem_description or not problem_description.strip():
@@ -38,9 +47,21 @@ async def debug_command(problem_description: str, intensity: Intensity) -> None:
     # Create session
     session = create_session(problem_description.strip(), intensity)
 
+    # Optionally feed the developer's uncommitted changes as context, so the tool
+    # can interrogate what they actually changed -- not just what they described.
+    preloaded_context = None
+    if use_diff:
+        from ..storage.git_context import get_git_diff
+
+        diff = get_git_diff(diff_since)
+        if diff:
+            preloaded_context = {"git diff (your uncommitted changes)": diff}
+        else:
+            display_warning("No git changes found; continuing without --diff.")
+
     try:
         # Run interactive session
-        result = await run_session_loop(session)
+        result = await run_session_loop(session, preloaded_context)
 
         # Finalize session
         behavior_tags = session.behavior_tags

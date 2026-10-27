@@ -29,11 +29,16 @@ pip install nietzschian-debugger
 nietzschian debug "your bug"
 ```
 
+**No API key yet? See it in action first — no key, no cost:**
+```bash
+nietzschian demo
+```
+
 > **Note:** the current tool is the Python package above. The old `npx nietzschian-debugger` serves a stale pre-rewrite build — it has been deprecated in favour of the pip install.
 
 **Requirements:**
 - Python >= 3.10
-- An Anthropic API key (BYOK — bring your own key)
+- An Anthropic API key (BYOK) — *or* bring another model (OpenAI, Gemini, DeepSeek, …), or run a local **Ollama** model, which needs no key. See [Use any model](#use-any-model).
 
 ## Setup
 
@@ -64,6 +69,41 @@ nietzschian debug --intensity zarathustra "Memory leak in production"
 
 # Point it at specific code
 nietzschian debug "Auth fails in ./src/middleware/auth.ts"
+
+# Interrogate your actual uncommitted changes (feeds the git diff as context)
+nietzschian debug --diff "tests started failing after my last change"
+
+# Use any model — Claude by default; or OpenAI, Gemini, DeepSeek, local Ollama…
+nietzschian debug --model ollama:llama3.1 "my function returns null sometimes"
+```
+
+## Use any model — API or local
+
+Claude is the default and the sharpest experience, but you can bring any model —
+most speak the OpenAI API, so they just work:
+
+```bash
+# Hosted (set the matching key: OPENAI_API_KEY, GEMINI_API_KEY, DEEPSEEK_API_KEY, …)
+nietzschian debug --model openai:gpt-4o-mini "..."
+nietzschian debug --model deepseek:deepseek-chat "..."
+nietzschian debug --model gemini:gemini-1.5-flash "..."
+
+# Local — no key, no cost, runs offline
+nietzschian debug --model ollama:llama3.1 "..."
+```
+
+Install the provider deps once: `pip install "nietzschian-debugger[providers]"`.
+Supported: **openai, gemini, deepseek, groq, mistral, together, openrouter, xai, ollama, lmstudio** — plus `custom:<model>` with `NIETZSCHIAN_BASE_URL` for any other OpenAI-compatible endpoint.
+
+> Honest caveat: the "never give answers" discipline is sharpest on Claude. Smaller local models leak and over-ask more (the built-in validator catches some of it, not all).
+
+## Share a session
+
+Your sessions are made to be shared. Turn the last one into clean markdown:
+
+```bash
+nietzschian share            # most recent session, to your terminal
+nietzschian share -o run.md  # or save it to a file
 ```
 
 ## Three Intensity Levels
