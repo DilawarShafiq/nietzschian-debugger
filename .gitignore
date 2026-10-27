@@ -46,3 +46,6 @@ node_modules/
 
 # Local machine config (per-machine; contains absolute paths)
 .claude/settings.local.json
+
+# PyPI credentials (never commit)
+*.pypirc

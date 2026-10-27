@@ -92,9 +92,9 @@ Nietzschian: "Random" is the word we use when we haven't looked
 
 You: Let me check... oh, they all have expired JWT tokens
 
-Nietzschian: Now we're getting somewhere. Why would some users
-             have expired tokens while others don't? What changed
-             recently in your auth system?
+Nietzschian: Now we're getting somewhere. What changed in your
+             auth system last week that an old session wouldn't
+             have survived?
 
 You: ... oh. We changed the token TTL last week and didn't
      invalidate existing sessions.
