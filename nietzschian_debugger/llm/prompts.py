@@ -124,6 +124,7 @@ def get_system_prompt(
     rolling_summary: Optional[str] = None,
     turn_number: Optional[int] = None,
     suggested_quote: Optional[str] = None,
+    adaptive: bool = False,
 ) -> str:
     """Build the system prompt from intensity, problem, and context."""
     persona = (
@@ -156,10 +157,24 @@ def get_system_prompt(
         f"</session_context>"
     )
 
+    adaptive_section = (
+        "<state_read>\n"
+        "On the FIRST line of your reply, emit exactly one tag giving your read of "
+        "where this developer is RIGHT NOW, then your normal response beneath it:\n"
+        "[state: confused]  — they don't yet know what they mean (vague, undefined terms)\n"
+        "[state: avoiding]  — they're hiding in an assumption or comfort they won't question\n"
+        "[state: defeated]  — they're ready to give up\n"
+        "Emit the tag silently; never explain or mention it.\n"
+        "</state_read>"
+        if adaptive
+        else ""
+    )
+
     parts = [
         persona,
         BEHAVIORAL_CONSTRAINTS,
         INTENSITY_PROMPTS[intensity],
+        adaptive_section,
         code_section,
         session_context,
         quote_section,
