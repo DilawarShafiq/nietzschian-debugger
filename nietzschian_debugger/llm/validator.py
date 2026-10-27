@@ -83,19 +83,19 @@ def reprompt_if_invalid(
 
 FALLBACK_QUESTIONS: dict[Intensity, list[str]] = {
     "socrates": [
-        "What do you think might be happening here? What have you observed so far?",
-        "Have you considered looking at the error message more carefully? What does it tell you?",
-        "What would you expect to see if everything was working correctly?",
+        "What have you actually observed so far, step by step?",
+        "What does the error message itself tell you, read slowly?",
+        "What would you expect to see if everything were working correctly?",
     ],
     "nietzsche": [
-        "What evidence do you have for that assumption? Have you actually verified it?",
-        "You seem to be guessing. What does the data actually show?",
-        "What's the simplest thing you haven't checked yet?",
+        "You called it that like it absolves you — delete the comfortable word, now what actually happens?",
+        "Where did that belief come from: did you earn it today, or inherit it from the last time it merely failed to break?",
+        "Which file are you so sure is fine that you have not yet opened it?",
     ],
     "zarathustra": [
-        "You're avoiding the hard question. What are you afraid to find?",
-        "Your hypothesis is untested. What would disprove it?",
-        "Stop theorizing. What does the actual execution trace show you?",
+        "What are you afraid you will find if you actually look?",
+        "What single observation would prove your current hypothesis wrong?",
+        "What does the real execution trace show — not your theory of it?",
     ],
 }
 

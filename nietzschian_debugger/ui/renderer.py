@@ -73,6 +73,11 @@ def display_api_key_help() -> None:
     console.print(
         "\n[bold red]Missing API Key[/bold red]\n\n"
         "Set your Anthropic API key to use the Nietzschian Debugger:\n\n"
-        "  [bold]export ANTHROPIC_API_KEY=your-key-here[/bold]\n\n"
+        "  [dim]# Linux / macOS[/dim]\n"
+        '  [bold]export ANTHROPIC_API_KEY="your-key-here"[/bold]\n\n'
+        "  [dim]# Windows (PowerShell)[/dim]\n"
+        '  [bold]$env:ANTHROPIC_API_KEY = "your-key-here"[/bold]\n\n'
+        "  [dim]# Windows (CMD)[/dim]\n"
+        "  [bold]set ANTHROPIC_API_KEY=your-key-here[/bold]\n\n"
         "Get a key at: [cyan]https://console.anthropic.com/[/cyan]\n"
     )
