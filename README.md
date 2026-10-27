@@ -25,11 +25,11 @@ This isn't anti-AI — it runs on Claude, on purpose. It's anti-*outsourcing-you
 
 ```bash
 # Python 3.10+
-pip install git+https://github.com/DilawarShafiq/nietzschian-debugger.git
+pip install nietzschian-debugger
 nietzschian debug "your bug"
 ```
 
-> **Note:** the current tool is the Python package above. The old `npx nietzschian-debugger` serves a stale pre-rewrite build and should not be used until the npm package is updated.
+> **Note:** the current tool is the Python package above. The old `npx nietzschian-debugger` serves a stale pre-rewrite build — it has been deprecated in favour of the pip install.
 
 **Requirements:**
 - Python >= 3.10
@@ -77,7 +77,7 @@ nietzschian debug "Auth fails in ./src/middleware/auth.ts"
 ## How a Session Looks
 
 ```
-  Nietzschian Debugger v0.1.0 — intensity: nietzsche
+  Nietzschian Debugger v0.2.0 — intensity: nietzsche
 
 You: My login endpoint returns 403 for some users
 
