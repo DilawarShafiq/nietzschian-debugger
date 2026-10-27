@@ -62,14 +62,12 @@ set ANTHROPIC_API_KEY=sk-ant-...
 ## Quick Start
 
 ```bash
-# Start a debugging session (default: nietzsche intensity)
+# Start a debugging session (adaptive by default — it reads your state and shifts lens)
 nietzschian debug "My API returns 500 but only on Tuesdays"
 
-# Gentle mode — for when you need guidance, not punishment
-nietzschian debug --intensity socrates "My login endpoint fails randomly"
-
-# Maximum intensity — for seniors who want pain
-nietzschian debug --intensity zarathustra "Memory leak in production"
+# Force a single lens instead of adapting
+nietzschian debug --lens socrates "My login endpoint fails randomly"
+nietzschian debug --lens zarathustra "Memory leak in production"
 
 # Point it at specific code
 nietzschian debug "Auth fails in ./src/middleware/auth.ts"
@@ -110,19 +108,21 @@ nietzschian share            # most recent session, to your terminal
 nietzschian share -o run.md  # or save it to a file
 ```
 
-## Three Intensity Levels
+## Three Lenses — it picks, not you
 
-| Level | Style | Best For |
-|-------|-------|----------|
-| `socrates` | Warm, guiding, scaffolded questions | Juniors, learning fundamentals |
-| `nietzsche` | Direct, confrontational, no hand-holding | Daily debugging (default) |
-| `zarathustra` | Brutal, adversarial, hostile to weak reasoning | Seniors who want real pain |
+By default it **adapts**: each turn it reads where you are and shifts between three methods. You don't choose a difficulty — a confused developer can't diagnose their own state, so the tool reads you instead. Nietzsche is home; it shifts only on sustained signals, not twitchily, and the active lens shows in every turn header (`[Turn 3 · socrates]`).
 
-Pick a level with `--intensity` (or `-i`); the default is `nietzsche`:
+| When you're… | Lens | What it does |
+|---|---|---|
+| **confused** — you don't know what you mean | `socrates` | Relentless clarification. Defines your vague terms until a testable claim appears. The stingray, not a gentle mentor. |
+| **avoiding** — hiding in an assumption | `nietzsche` | The tuning fork. Taps the idol you're proudest of and listens for the hollow ring. |
+| **defeated** — ready to quit | `zarathustra` | Affirmation. Reframes the bug as the weight that makes you stronger, and will not let you quit. |
+
+None of them is soft — **adaptivity changes the angle of the blade, never sheathes it.** To pin one lens instead of adapting:
 
 ```bash
-nietzschian debug -i socrates "my bug"
-nietzschian debug --intensity zarathustra "my bug"
+nietzschian debug --lens socrates "my bug"
+nietzschian debug --lens zarathustra "my bug"
 ```
 
 ## How a Session Looks
