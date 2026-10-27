@@ -216,6 +216,102 @@ Your Debugging Profile:
  -- Friedrich Nietzsche
 ```
 
+## Prove You Understand It — `predict`
+
+`debug` interrogates a bug. `predict` interrogates **you**: it dares you to say what
+one of your functions returns, then **runs the code** for the truth — never a model
+guessing (that can be confidently wrong). At the end it names the *pattern* in your
+misses, not a score.
+
+```bash
+nietzschian predict ./parsers.py          # 3 dares by default
+nietzschian predict ./parsers.py -n 5     # go five rounds
+```
+
+```
+$ nietzschian predict ./parsers.py
+
+Nietzschian Debugger [predict mode]
+
+3 rounds — type 'quit' (or press Ctrl+C) to stop early.
+
+── Round 1 of 3 ──
+
+You named it truncate, and now you believe it truncates. Sweet certainty. But
+look — you gave length a default of zero, and zero is a falsy little god that
+answers "if not length". So tell me, prophet:
+what does truncate("hello world") return?
+
+your prophecy > "" — it truncates to zero, so nothing
+
+Wrong, and gloriously so. "if not length" caught your zero and handed back the
+text untouched, before a single character was cut. You read the name and never
+the first line. The guard fired; your logic never ran.
+
+The truth, once run — it returned 'hello world'.
+
+── Round 2 of 3 ──
+
+You wrote dedupe, and I can smell the doubt — most who write it reach for a set
+and let the order rot. Did you keep the order, or did you betray it?
+what does dedupe([3, 1, 2, 1, 3]) return?
+
+your prophecy > [3, 1, 2]
+
+Right — and not by luck. You kept the first sighting of each and dropped the
+echoes. Clean. There was no trap here; some things you simply know.
+
+The truth, once run — it returned [3, 1, 2].
+
+── Round 3 of 3 ──
+
+A tier function, a border drawn at one hundred. Borders are where confidence
+goes to die. Stand on the line itself and tell me which side claims you:
+what does shipping_tier(100) return?
+
+your prophecy > "freight" — 100 is the heavy tier
+
+Wrong. "weight > 100", and one hundred is not greater than one hundred. You
+stood ON the boundary and assumed it pulled you across; it let you fall back to
+'parcel'. The strict > you typed yourself is the thing you forgot.
+
+The truth, once run — it returned 'parcel'.
+
+Proof of Understanding
+
+Two of three — and the two you missed were cut from the same cloth. You read
+functions by their name and their happy middle, and walk straight past the lines
+that quietly decide everything first: the falsy default that returns early, the
+strict > that owns its edge. You trust what the code is *for* over what it
+*says*. Read the guards before the gift — the boundary is not an afterthought,
+it is the whole argument.
+```
+
+> It runs your code in a separate process with a timeout — your own functions, called
+> the way you'd call them. It only picks functions it can invoke with simple literal
+> arguments, and a function that raises is a legitimate answer (predict that too).
+
+## Roast Your Code — `roast`
+
+For when you don't want a question or a fix — you want the truth, fast and funny.
+Point it at your worst file; it reads the code's cowardice and laughs. Fixes nothing.
+
+```bash
+nietzschian roast ./legacy/utils.py
+```
+
+```
+$ nietzschian roast ./legacy/utils.py
+
+🔥 Nietzschian Roast
+
+A function named `helper` wrapping a bare `except: pass` — you built a room with
+no windows and called it tidy. The bug you're hiding from in there is the only
+honest thing you've written all week.
+```
+
+> "Not by wrath does one kill, but by laughter." — *Thus Spoke Zarathustra*
+
 ## Session Commands
 
 | Command | Effect |
@@ -228,6 +324,8 @@ Your Debugging Profile:
 ## Features
 
 - **Refuses to Hand You the Fix** — Every response is a question. It's built to withhold the answer, and a model-judge double-checks each reply to catch it when it slips.
+- **Proof of Understanding** — `predict` dares you to say what your code returns, then *runs it* for the truth (never a model guessing) and names the pattern in your misses.
+- **Nietzschian Roast** — `roast` reads your worst file and burns it down in one or two lines. Fixes nothing. Deeply shareable.
 - **Real Code Reading** — Reference a file path and it reads YOUR actual code, not generic examples. `--diff` feeds it your uncommitted changes.
 - **Any Model, Even Local** — Claude by default; or OpenAI, Gemini, DeepSeek, Groq, and more — or a local Ollama / LM Studio model with no key and no cost.
 - **Try With No Key** — `nietzschian demo` runs a full scripted session so you can see it before committing a key.
