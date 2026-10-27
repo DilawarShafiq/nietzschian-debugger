@@ -2,6 +2,25 @@
 
 All notable changes to this project are documented here.
 
+## [0.4.0] — 2026-10-28
+
+### Added
+- **Adaptive lenses (now the default).** Each turn it reads the developer's state
+  and shifts between three methods with hysteresis — Nietzsche is home; it moves
+  only on sustained or strong signals, not twitchily. The active lens shows in
+  each turn header (`[Turn 3 · socrates]`):
+  - **Socrates** — relentless clarification, for when you're *confused*.
+  - **Nietzsche** — the tuning fork, for when you're *avoiding*.
+  - **Zarathustra** — affirmation / amor-fati, for when you're *defeated*.
+  None of them is soft — adaptivity changes the angle of the blade, never sheathes it.
+- **`--lens <socrates|nietzsche|zarathustra>`** pins a single lens instead of
+  adapting (`--intensity` / `-i` remain as aliases).
+
+### Changed
+- Corrected the Socrates and Zarathustra personas to the real philosophers:
+  Socrates is relentless elenchus (not "gentle"); Zarathustra is affirmation
+  (not "brutal").
+
 ## [0.3.0] — 2026-10-28
 
 ### Added

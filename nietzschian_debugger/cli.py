@@ -25,9 +25,11 @@ def cli() -> None:
 @click.option(
     "-i",
     "--intensity",
+    "--lens",
+    "lens",
     type=click.Choice(VALID_INTENSITIES, case_sensitive=False),
-    default="nietzsche",
-    help="Questioning intensity: socrates, nietzsche, zarathustra",
+    default=None,
+    help="Force one lens (socrates/nietzsche/zarathustra). Default: adaptive — it reads your state and shifts between them.",
 )
 @click.option(
     "--diff",
@@ -47,7 +49,7 @@ def cli() -> None:
     default=None,
     help="LLM to use (default: Claude). e.g. openai:gpt-4o-mini, ollama:llama3, gemini:gemini-1.5-flash.",
 )
-def debug(problem: str, intensity: str, use_diff: bool, diff_since: str, model_spec: str) -> None:
+def debug(problem: str, lens: str, use_diff: bool, diff_since: str, model_spec: str) -> None:
     """Start an interactive debugging session.
 
     PROBLEM is the description of the bug or problem to debug.
@@ -55,7 +57,7 @@ def debug(problem: str, intensity: str, use_diff: bool, diff_since: str, model_s
     from .llm import providers
 
     providers.configure(model_spec)
-    asyncio.run(debug_command(problem, intensity, use_diff, diff_since))  # type: ignore[arg-type]
+    asyncio.run(debug_command(problem, lens, use_diff, diff_since))  # type: ignore[arg-type]
 
 
 @cli.command()
