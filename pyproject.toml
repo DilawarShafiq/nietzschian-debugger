@@ -50,6 +50,11 @@ dev = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.23.0",
 ]
+# Non-Anthropic models (OpenAI, Ollama, Gemini, DeepSeek, Groq, ...) via the
+# OpenAI-compatible API. Claude needs none of this.
+providers = [
+    "openai>=1.0.0",
+]
 
 [project.scripts]
 nietzschian = "nietzschian_debugger.cli:main"

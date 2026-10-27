@@ -41,11 +41,20 @@ def cli() -> None:
     default=None,
     help="With --diff, diff against this ref (commit/branch) instead of HEAD.",
 )
-def debug(problem: str, intensity: str, use_diff: bool, diff_since: str) -> None:
+@click.option(
+    "--model",
+    "model_spec",
+    default=None,
+    help="LLM to use (default: Claude). e.g. openai:gpt-4o-mini, ollama:llama3, gemini:gemini-1.5-flash.",
+)
+def debug(problem: str, intensity: str, use_diff: bool, diff_since: str, model_spec: str) -> None:
     """Start an interactive debugging session.
 
     PROBLEM is the description of the bug or problem to debug.
     """
+    from .llm import providers
+
+    providers.configure(model_spec)
     asyncio.run(debug_command(problem, intensity, use_diff, diff_since))  # type: ignore[arg-type]
 
 
