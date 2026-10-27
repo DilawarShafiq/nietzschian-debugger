@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nietzschian-debugger"
-version = "0.2.1"
+version = "0.2.2"
 description = "It won't fix your bug. It'll fix you. What doesn't kill your code makes it stronger. Confrontational questioning for developers."
 readme = "README.md"
 license = {text = "MIT"}

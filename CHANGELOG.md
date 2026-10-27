@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here.
 
+## [0.2.2] — 2026-10-27
+
+### Fixed
+- **Windows crash at the "you solved it" screen.** The box-drawing characters
+  (┣ ┗) in the Growth Profile and em-dashes in questions crashed with
+  `UnicodeEncodeError` on cp1252 consoles (and whenever output was piped).
+  Output is now forced to UTF-8 at startup, so it renders on every terminal.
+
 ## [0.2.1] — 2026-10-27
 
 ### Fixed

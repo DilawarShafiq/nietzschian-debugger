@@ -39,6 +39,15 @@ def debug(problem: str, intensity: str) -> None:
 
 def main() -> None:
     """Main entry point."""
+    # Windows consoles often default to cp1252, which cannot encode the
+    # box-drawing characters in the growth profile (┣ ┗) or em-dashes in
+    # questions — it crashes with UnicodeEncodeError at the "you solved it"
+    # screen. Force UTF-8 so output renders on every terminal.
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
+        except Exception:
+            pass
     cli()
 
 
