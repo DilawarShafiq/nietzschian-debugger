@@ -78,6 +78,23 @@ def share(session_id: str, out_path: str) -> None:
     asyncio.run(share_session(session_id, out_path))
 
 
+@cli.command()
+@click.argument("file")
+@click.option(
+    "--model",
+    "model_spec",
+    default=None,
+    help="LLM to use (default: Claude). e.g. openai:gpt-4o-mini, ollama:qwen2.5-coder:7b.",
+)
+def predict(file: str, model_spec: str) -> None:
+    """Dare yourself: predict what your code does before you run it."""
+    from .llm import providers
+    from .commands.predict import predict_command
+
+    providers.configure(model_spec)
+    predict_command(file)
+
+
 def main() -> None:
     """Main entry point."""
     # Windows consoles often default to cp1252, which cannot encode the
