@@ -2,6 +2,26 @@
 
 All notable changes to this project are documented here.
 
+## [0.5.1] — 2026-10-28
+
+### Fixed
+- **Roast and predict output no longer leaks markdown.** Small local models spray
+  `**bold**` markers that a terminal can't render; the output is now scrubbed to
+  clean prose (dunder names like `__init__` are left intact). Roasts are also
+  capped to their first two sentences, so a rambling model still lands in one or
+  two lines as promised.
+
+## [0.5.0] — 2026-10-28
+
+### Added
+- **`nietzschian predict <file>` — Proof of Understanding.** Dares you to predict
+  what one of your functions returns, then *runs the code* for the truth (never a
+  model guessing, which can be confidently wrong). Multiple rounds (`-n/--rounds`),
+  then it names the *pattern* in your misses — not a score, a pattern.
+- **`nietzschian roast <file>`** — one or two lines of Nietzschian contempt for a
+  file. No session, no questions, no fix. "Not by wrath does one kill, but by
+  laughter."
+
 ## [0.4.0] — 2026-10-28
 
 ### Added

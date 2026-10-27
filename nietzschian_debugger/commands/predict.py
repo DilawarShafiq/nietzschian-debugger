@@ -149,10 +149,16 @@ def is_callable_top_level(syspath: str, module: str, func: str) -> bool:
 
 
 def _strip_fences(text: str) -> str:
-    """Remove a wrapping markdown code fence a model sometimes adds around prose."""
+    """Remove a wrapping code fence and markdown bold a model adds around prose.
+
+    Weak models wrap prose in ``` fences and spray **bold** that a terminal can't
+    render; strip both so dares and verdicts read clean. (Leave __dunder__ alone.)
+    """
     t = text.strip()
     t = re.sub(r"^```[a-zA-Z]*\s*\n?", "", t)
     t = re.sub(r"\n?```\s*$", "", t)
+    t = re.sub(r"\*\*(.+?)\*\*", r"\1", t, flags=re.DOTALL)
+    t = t.replace("**", "")
     return t.strip()
 
 
