@@ -78,6 +78,47 @@ def share(session_id: str, out_path: str) -> None:
     asyncio.run(share_session(session_id, out_path))
 
 
+@cli.command()
+@click.argument("file")
+@click.option(
+    "--model",
+    "model_spec",
+    default=None,
+    help="LLM to use (default: Claude). e.g. openai:gpt-4o-mini, ollama:qwen2.5-coder:7b.",
+)
+@click.option(
+    "-n",
+    "--rounds",
+    default=3,
+    type=int,
+    help="How many predictions to dare you with before the Proof-of-Understanding report (default: 3).",
+)
+def predict(file: str, model_spec: str, rounds: int) -> None:
+    """Dare yourself: predict what your code does before you run it."""
+    from .llm import providers
+    from .commands.predict import predict_command
+
+    providers.configure(model_spec)
+    predict_command(file, rounds=rounds)
+
+
+@cli.command()
+@click.argument("file")
+@click.option(
+    "--model",
+    "model_spec",
+    default=None,
+    help="LLM to use (default: Claude). e.g. openai:gpt-4o-mini, ollama:llama3.1.",
+)
+def roast(file: str, model_spec: str) -> None:
+    """Point it at your worst file. One or two lines. It fixes nothing."""
+    from .llm import providers
+    from .commands.roast import roast_command
+
+    providers.configure(model_spec)
+    roast_command(file)
+
+
 def main() -> None:
     """Main entry point."""
     # Windows consoles often default to cp1252, which cannot encode the
