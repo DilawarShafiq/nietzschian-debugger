@@ -73,9 +73,17 @@ class TestValidateResponse:
 
     def test_passes_pure_question(self) -> None:
         result = validate_response(
-            "What does the error message say when you run the test? Have you looked at the stack trace?"
+            "What does the error message say when you run the test?"
         )
         assert result.valid is True
+
+    def test_rejects_more_than_one_question(self) -> None:
+        # Exactly one question per turn -- a single blade they cannot step around.
+        result = validate_response(
+            "What does the error say? Have you looked at the stack trace?"
+        )
+        assert result.valid is False
+        assert "more than one question" in (result.reason or "")
 
     def test_passes_question_mentioning_code_without_fix(self) -> None:
         result = validate_response(
@@ -85,7 +93,7 @@ class TestValidateResponse:
 
     def test_passes_challenging_question_about_code(self) -> None:
         result = validate_response(
-            "What evidence do you have that the database connection is the bottleneck? Have you actually measured it?"
+            "What evidence do you have that the database connection is the bottleneck, rather than something you assumed?"
         )
         assert result.valid is True
 

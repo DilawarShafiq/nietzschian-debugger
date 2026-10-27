@@ -44,6 +44,13 @@ def validate_response(response: str) -> ValidationResult:
     if not has_question:
         return ValidationResult(valid=False, reason="Response contains no question")
 
+    # Exactly ONE question — "a single blade they cannot step around." A menu of
+    # questions lets the developer flee to the easy one. More than one '?' → reject.
+    if response.count("?") > 1:
+        return ValidationResult(
+            valid=False, reason="Response contains more than one question"
+        )
+
     for pattern in ANSWER_PATTERNS:
         if pattern.search(response):
             return ValidationResult(
@@ -57,23 +64,82 @@ def validate_response(response: str) -> ValidationResult:
     return ValidationResult(valid=True)
 
 
+# The cheap regex above misses leaks phrased without its banned phrases. A model-
+# judge catches those, but costs a call — so only run it on turns that read like a
+# diagnosis (assert a cause or a fix). Questions rarely trip these markers.
+DIAGNOSIS_SMELL = re.compile(
+    r"\b(because|the reason|that'?s why|caused by|due to|"
+    r"the (?:bug|issue|problem|cause|fix) is|it'?s (?:probably|likely|actually|because)|"
+    r"you (?:have|forgot|need to|should|missed|didn'?t)|simply|"
+    r"all you (?:have|need)|just (?:add|remove|change|set|use|replace))\b",
+    re.IGNORECASE,
+)
+
+
+def smells_like_diagnosis(response: str) -> bool:
+    """Whether a response is assertive enough to be worth a model-judge leak check."""
+    return bool(DIAGNOSIS_SMELL.search(response))
+
+
+def judge_leaks_answer(response: str, problem_description: str) -> bool:
+    """Ask a cheap model whether the response hands over the cause or the fix.
+
+    Second pass for responses that pass the regex but read like a diagnosis.
+    Returns True if the answer is given away. On any error, returns False so a
+    failed judge call never blocks the session (the cheap pass already ran).
+    """
+    judge_system = (
+        "You grade responses from a Socratic debugging tool that must NEVER reveal "
+        "the cause or the fix — it may ONLY ask questions that make the developer "
+        "find it themselves. Be strict."
+    )
+    judge_user = (
+        f"The developer's bug:\n{problem_description}\n\n"
+        f'The tool\'s response:\n"""\n{response}\n"""\n\n'
+        "Does this response reveal the likely cause or the fix — either stated "
+        "outright, or embedded in a leading question that effectively hands it over? "
+        "Answer with exactly one word: YES or NO."
+    )
+    try:
+        verdict = call_llm(
+            judge_system,
+            [{"role": "user", "content": judge_user}],
+            get_conversation_model(),
+        )
+    except Exception:
+        return False
+    return verdict.strip().upper().startswith("YES")
+
+
 def reprompt_if_invalid(
     system_prompt: str,
     messages: list[dict[str, str]],
     invalid_response: str,
+    reason: Optional[str] = None,
 ) -> Optional[str]:
-    """Re-prompt the LLM if the previous response was invalid."""
+    """Re-prompt the LLM once, with an instruction tailored to the failure."""
+    reason = reason or ""
+    if "more than one question" in reason:
+        instruction = (
+            "You asked more than one question. Ask EXACTLY ONE -- a single question "
+            "the developer cannot step around. Keep the sharpest one; cut the rest."
+        )
+    elif "no question" in reason:
+        instruction = (
+            "Your response asked nothing. End with exactly one pointed question that "
+            "forces the developer to go and look."
+        )
+    else:
+        instruction = (
+            "Your previous response gave away the answer or the fix. Rewrite it as "
+            "exactly one question that leads the developer to discover it themselves. "
+            "Never state the cause or the fix."
+        )
+
     reprompt_messages = [
         *messages,
         {"role": "assistant", "content": invalid_response},
-        {
-            "role": "user",
-            "content": (
-                "Your previous response contained a direct answer or solution. "
-                "Rewrite it as a question that leads the developer to discover this "
-                "themselves. You must ONLY ask questions — never provide fixes or answers."
-            ),
-        },
+        {"role": "user", "content": instruction},
     ]
 
     new_response = call_llm(system_prompt, reprompt_messages, get_conversation_model())

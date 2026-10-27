@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented here.
 
+## [0.2.3] — 2026-10-27
+
+### Changed
+- **Exactly one question per turn is now enforced in code**, not just requested
+  in the prompt. A response with more than one question is reprompted once; if it
+  still over-asks, the model's own contextual response is kept — two real
+  questions beat a canned non-sequitur.
+- **No-answer enforcement hardened with a model-judge.** The cheap keyword check
+  runs first; on turns that read like a diagnosis it escalates to a cheap model
+  that judges whether the answer was handed over. A leak that can't be reprompted
+  out falls back to a safe question — the one promise the tool makes is kept.
+
+### UX
+- The `[Turn N]` header now prints the instant you answer, before the (silent)
+  generation — the pause reads as thinking, not a hang. No spinner by design.
+
 ## [0.2.2] — 2026-10-27
 
 ### Fixed
