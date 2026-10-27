@@ -22,11 +22,11 @@ from ..ui.renderer import display_error, display_warning, display_api_key_help
 
 async def debug_command(
     problem_description: str,
-    intensity: Intensity,
+    lens: "str | None" = None,
     use_diff: bool = False,
     diff_since: "str | None" = None,
 ) -> None:
-    """Run a full debugging session."""
+    """Run a full debugging session. lens=None means adaptive; else that lens is forced."""
     # Validate API key (Anthropic path only; other providers validate their own
     # key lazily on the first call).
     from ..llm import providers
@@ -44,8 +44,8 @@ async def debug_command(
         print('\nUsage: nietzschian debug "Your problem description here"')
         sys.exit(2)
 
-    # Create session
-    session = create_session(problem_description.strip(), intensity)
+    # Create session (store the home/forced lens for the record)
+    session = create_session(problem_description.strip(), lens or "nietzsche")
 
     # Optionally feed the developer's uncommitted changes as context, so the tool
     # can interrogate what they actually changed -- not just what they described.
@@ -61,7 +61,7 @@ async def debug_command(
 
     try:
         # Run interactive session
-        result = await run_session_loop(session, preloaded_context)
+        result = await run_session_loop(session, preloaded_context, forced_lens=lens)
 
         # Finalize session
         behavior_tags = session.behavior_tags
