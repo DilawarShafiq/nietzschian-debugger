@@ -17,6 +17,7 @@ from ..ui.renderer import (
     new_line,
     display_session_header,
     display_dim,
+    display_error,
 )
 
 EXIT_COMMANDS = {"exit", "quit"}
@@ -179,7 +180,9 @@ async def run_session_loop(session: Session) -> SessionLoopResult:
 
     except KeyboardInterrupt:
         return SessionLoopResult(outcome="abandoned")
-    except Exception:
+    except Exception as error:
+        # Don't die silently — tell the developer the session broke and why.
+        display_error(f"The session ended unexpectedly: {error}")
         return SessionLoopResult(outcome="abandoned")
 
 
