@@ -1,6 +1,6 @@
 # Nietzschian Debugger
 
-![Nietzschian Debugger: the debugger that only asks questions](assets/banner.png)
+![Nietzschian Debugger: the debugger that hands the question back](assets/banner.png)
 
 [![PyPI](https://img.shields.io/pypi/v/nietzschian-debugger)](https://pypi.org/project/nietzschian-debugger/)
 [![Python](https://img.shields.io/pypi/pyversions/nietzschian-debugger)](https://pypi.org/project/nietzschian-debugger/)
@@ -375,7 +375,7 @@ honest thing you've written all week.
 - **Any Model, Even Local** — Claude by default; or OpenAI, Gemini, DeepSeek, Groq, and more — or a local Ollama / LM Studio model with no key and no cost.
 - **Try With No Key** — `nietzschian demo` runs a full scripted session so you can see it before committing a key.
 - **Shareable Sessions** — `nietzschian share` exports a session as clean markdown you can post.
-- **Contextual Philosophy** — Nietzsche when you're avoiding, Seneca when overwhelmed, Sun Tzu when you need strategy.
+- **Adaptive Lenses** — it reads your state each turn and shifts between Socrates (when you're confused), Nietzsche (when you're avoiding), and Zarathustra (when you're defeated). You don't pick the difficulty; it reads you.
 - **Growth Score** — Track your debugging skills across sessions with visual bar charts.
 - **Session History** — All sessions saved locally in `.nietzschian/sessions/` for trend tracking.
 - **Sliding Context** — Long sessions don't crash; older turns are transparently summarized.
