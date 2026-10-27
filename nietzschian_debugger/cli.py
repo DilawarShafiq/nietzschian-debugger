@@ -102,6 +102,23 @@ def predict(file: str, model_spec: str, rounds: int) -> None:
     predict_command(file, rounds=rounds)
 
 
+@cli.command()
+@click.argument("file")
+@click.option(
+    "--model",
+    "model_spec",
+    default=None,
+    help="LLM to use (default: Claude). e.g. openai:gpt-4o-mini, ollama:llama3.1.",
+)
+def roast(file: str, model_spec: str) -> None:
+    """Point it at your worst file. One or two lines. It fixes nothing."""
+    from .llm import providers
+    from .commands.roast import roast_command
+
+    providers.configure(model_spec)
+    roast_command(file)
+
+
 def main() -> None:
     """Main entry point."""
     # Windows consoles often default to cp1252, which cannot encode the
