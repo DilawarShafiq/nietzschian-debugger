@@ -20,6 +20,30 @@ class TestParseStateTag:
         state, _ = parse_state_tag("[STATE: Defeated] keep going?")
         assert state == "defeated"
 
+    def test_parses_bare_state_colon_form(self) -> None:
+        state, clean = parse_state_tag("STATE: confused\n\nDefine 'broken' for me?")
+        assert state == "confused"
+        assert clean.strip() == "Define 'broken' for me?"
+
+    def test_strips_echoed_description_from_weak_model(self) -> None:
+        # Regression: a weak model echoed the option description instead of the
+        # tag, and it leaked into the question. Strip it, infer the state.
+        raw = (
+            "— they're hiding in an assumption or comfort they won't question\n\n"
+            "What step are you taking right now to find where it breaks?"
+        )
+        state, clean = parse_state_tag(raw)
+        assert state == "avoiding"
+        assert clean.strip().startswith("What step")
+        assert "hiding" not in clean
+
+    def test_real_question_is_not_stripped(self) -> None:
+        # A legitimate one-line question must pass through untouched.
+        q = "'Random' — you said that like it absolves you. What did the logs show?"
+        state, clean = parse_state_tag(q)
+        assert state is None
+        assert clean == q
+
 
 class TestLensTracker:
     def test_default_home_is_nietzsche(self) -> None:

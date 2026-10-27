@@ -21,19 +21,49 @@ HOME_LENS = "nietzsche"
 VALID_STATES = set(STATE_TO_LENS)
 
 # a leading tag on its own line, e.g. "[state: avoiding]"
-_TAG = re.compile(r"^\s*\[state:\s*(confused|avoiding|defeated)\s*\]\s*", re.IGNORECASE)
+_TAG = re.compile(
+    r"^\s*[\[(]?\s*state\s*[:=]\s*(confused|avoiding|defeated)\s*[\])]?\s*",
+    re.IGNORECASE,
+)
+
+# Weak models sometimes echo an option's DESCRIPTION instead of emitting the tag.
+# Map the tell-tale phrases back to a state so we can strip the junk line AND
+# still read the signal, rather than leaking prompt text into the question.
+_DESC_TO_STATE = [
+    ("know what they mean", "confused"),
+    ("vague", "confused"),
+    ("hiding in an assumption", "avoiding"),
+    ("an assumption or comfort", "avoiding"),
+    ("comfort they", "avoiding"),
+    ("ready to give up", "defeated"),
+    ("ready to quit", "defeated"),
+    ("give up", "defeated"),
+]
 
 
 def parse_state_tag(text: str) -> tuple[Optional[str], str]:
-    """Extract and strip a leading ``[state: X]`` tag.
+    """Extract and strip a leading state tag; return (state_or_None, clean_text).
 
-    Returns (state_or_None, clean_text). If no tag, state is None and text is
-    unchanged.
+    Handles the clean tag (``[state: X]``, ``STATE: X``, ``(state=X)``) and, for a
+    weak model that echoes an option's description instead, strips that leading
+    junk line and infers the state from it. Never leaks the tag/preamble into the
+    displayed question.
     """
     match = _TAG.match(text)
-    if not match:
-        return None, text
-    return match.group(1).lower(), text[match.end():]
+    if match:
+        return match.group(1).lower(), text[match.end():].lstrip("\n ")
+
+    # Robustness: a first line that echoes a description (dash/bracket-led, no '?').
+    parts = text.split("\n", 1)
+    first = parts[0].strip()
+    rest = parts[1].lstrip("\n ") if len(parts) > 1 else ""
+    low = first.lower()
+    looks_meta = (first[:1] in ("—", "-", "[", "(") or low.startswith("state")) and "?" not in first
+    if looks_meta and rest.strip():
+        for needle, state in _DESC_TO_STATE:
+            if needle in low:
+                return state, rest
+    return None, text
 
 
 class LensTracker:
