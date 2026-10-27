@@ -8,12 +8,36 @@ does.
 
 from __future__ import annotations
 
+import re
 import sys
 
 from ..llm.client import call_llm, get_client, get_conversation_model, MissingApiKeyError
 from ..ui.renderer import console, display_api_key_help, display_error
 
 _MAX_CODE_CHARS = 12000
+
+
+def _clean_roast(text: str) -> str:
+    """Scrub a weak model's output into clean terminal prose.
+
+    Small local models spray markdown bold (**like this**) that a terminal can't
+    render, and ramble past the one-or-two-line promise. Strip a wrapping code
+    fence, drop bold/italic markers, collapse blank lines, and keep at most the
+    first two sentences so the roast lands and stops.
+    """
+    t = text.strip()
+    t = re.sub(r"^```[a-zA-Z]*\s*\n?", "", t)
+    t = re.sub(r"\n?```\s*$", "", t)
+    # Collapse **bold** / *italic* pairs to their contents, then remove any
+    # orphaned marker a model left unbalanced. (Leave __dunder__ names alone.)
+    t = re.sub(r"\*\*(.+?)\*\*", r"\1", t, flags=re.DOTALL)
+    t = re.sub(r"(?<!\w)\*(?!\s)(.+?)(?<!\s)\*(?!\w)", r"\1", t, flags=re.DOTALL)
+    t = t.replace("**", "")
+    t = re.sub(r"[ \t]*\n[ \t\n]*", " ", t).strip()  # one flowing line
+    parts = re.split(r"(?<=[.!?])\s+", t)
+    if len(parts) > 2:
+        t = " ".join(parts[:2]).strip()
+    return t
 
 ROAST_SYSTEM = (
     "You are the Nietzschian Debugger in ROAST mode, in Nietzsche's voice. You are "
@@ -65,5 +89,5 @@ def roast_command(file_path: str) -> None:
         sys.exit(1)
 
     console.print("\n[bold red]🔥 Nietzschian Roast[/bold red]\n")
-    print(roast.strip().strip('"'))
+    print(_clean_roast(roast).strip('"'))
     console.print()

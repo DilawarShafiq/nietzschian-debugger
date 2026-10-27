@@ -26,3 +26,23 @@ def test_empty_file_exits_before_any_api_call(tmp_path) -> None:
 def test_missing_file_exits(tmp_path) -> None:
     with pytest.raises(SystemExit):
         roast.roast_command(str(tmp_path / "nope.py"))
+
+
+def test_clean_roast_strips_markdown_bold_litter() -> None:
+    # A real qwen2.5-coder:7b roast sprayed **bold** into a terminal that can't
+    # render it. Scrub the markers but keep every word.
+    ugly = "**WRONG.** The **`except:`** clause is a **swallowhole**, choking the truth."
+    clean = roast._clean_roast(ugly)
+    assert "**" not in clean
+    assert "WRONG." in clean and "swallowhole" in clean
+
+
+def test_clean_roast_caps_at_two_sentences() -> None:
+    four = "First cut. Second cut. Third cut. Fourth cut."
+    clean = roast._clean_roast(four)
+    assert clean == "First cut. Second cut."
+
+
+def test_clean_roast_leaves_dunder_names_intact() -> None:
+    # __init__ is a name, not bold — don't eat its underscores.
+    assert "__init__" in roast._clean_roast("Your __init__ does nothing honest.")
