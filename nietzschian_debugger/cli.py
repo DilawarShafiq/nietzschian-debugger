@@ -86,13 +86,20 @@ def share(session_id: str, out_path: str) -> None:
     default=None,
     help="LLM to use (default: Claude). e.g. openai:gpt-4o-mini, ollama:qwen2.5-coder:7b.",
 )
-def predict(file: str, model_spec: str) -> None:
+@click.option(
+    "-n",
+    "--rounds",
+    default=3,
+    type=int,
+    help="How many predictions to dare you with before the Proof-of-Understanding report (default: 3).",
+)
+def predict(file: str, model_spec: str, rounds: int) -> None:
     """Dare yourself: predict what your code does before you run it."""
     from .llm import providers
     from .commands.predict import predict_command
 
     providers.configure(model_spec)
-    predict_command(file)
+    predict_command(file, rounds=rounds)
 
 
 def main() -> None:
