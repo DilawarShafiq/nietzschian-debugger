@@ -164,7 +164,9 @@ def _parse_dare(text: str) -> tuple[str, dict | None]:
                 except Exception:
                     call = None
         dare = text[: match.start()]
-    dare = re.sub(r"^\s*DARE:\s*", "", dare.strip()).strip()
+    # Strip the DARE: label wherever it lands (weak models sometimes write a
+    # preamble before it, so it isn't always leading).
+    dare = re.sub(r"\bDARE:\s*", "", dare).strip()
     return dare, call
 
 
@@ -215,7 +217,7 @@ def _run_round(code: str, file_path: str, model: str, syspath: str, module: str,
     print(dare)
     new_line()
     try:
-        guess = input("your prediction > ").strip()
+        guess = input("your prophecy > ").strip()
     except (EOFError, KeyboardInterrupt):
         return None
     if not guess:
@@ -251,7 +253,7 @@ def _run_round(code: str, file_path: str, model: str, syspath: str, module: str,
     new_line()
     print(verdict.strip())
     new_line()
-    display_dim(f"Actual result (executed): {truth}")
+    display_dim(f"The truth, once run — it {truth}.")
     new_line()
     return {"function": call["function"], "correct": correct, "verdict": verdict.strip()}
 
