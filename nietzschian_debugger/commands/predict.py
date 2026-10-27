@@ -148,6 +148,14 @@ def is_callable_top_level(syspath: str, module: str, func: str) -> bool:
     return bool(out and out.get("ok"))
 
 
+def _strip_fences(text: str) -> str:
+    """Remove a wrapping markdown code fence a model sometimes adds around prose."""
+    t = text.strip()
+    t = re.sub(r"^```[a-zA-Z]*\s*\n?", "", t)
+    t = re.sub(r"\n?```\s*$", "", t)
+    return t.strip()
+
+
 def _parse_dare(text: str) -> tuple[str, dict | None]:
     """Split model output into (human dare, {function, args})."""
     call = None
@@ -166,7 +174,7 @@ def _parse_dare(text: str) -> tuple[str, dict | None]:
         dare = text[: match.start()]
     # Strip the DARE: label wherever it lands (weak models sometimes write a
     # preamble before it, so it isn't always leading).
-    dare = re.sub(r"\bDARE:\s*", "", dare).strip()
+    dare = _strip_fences(re.sub(r"\bDARE:\s*", "", dare))
     return dare, call
 
 
@@ -220,7 +228,7 @@ def _run_round(code: str, file_path: str, model: str, syspath: str, module: str,
         guess = input("your prophecy > ").strip()
     except (EOFError, KeyboardInterrupt):
         return None
-    if not guess:
+    if not guess or guess.lower() in {"quit", "exit"}:
         return None
 
     outcome = execute_call(syspath, module, call["function"], call.get("args", []))
@@ -250,8 +258,9 @@ def _run_round(code: str, file_path: str, model: str, syspath: str, module: str,
         return None
 
     correct, verdict = _parse_match(verdict_raw)
+    verdict = _strip_fences(verdict)
     new_line()
-    print(verdict.strip())
+    print(verdict)
     new_line()
     display_dim(f"The truth, once run — it {truth}.")
     new_line()
@@ -311,6 +320,7 @@ def predict_command(file_path: str, rounds: int = 3) -> None:
     console.print("\n[bold cyan]Nietzschian Debugger[/bold cyan] [dim][predict mode][/dim]\n")
 
     rounds = max(1, min(rounds, _MAX_ROUNDS))
+    display_dim(f"{rounds} rounds — type 'quit' (or press Ctrl+C) to stop early.\n")
     avoid: list[str] = []
     results: list[dict] = []
     for i in range(1, rounds + 1):
