@@ -74,6 +74,13 @@ nietzschian debug "Auth fails in ./src/middleware/auth.ts"
 | `nietzsche` | Direct, confrontational, no hand-holding | Daily debugging (default) |
 | `zarathustra` | Brutal, adversarial, hostile to weak reasoning | Seniors who want real pain |
 
+Pick a level with `--intensity` (or `-i`); the default is `nietzsche`:
+
+```bash
+nietzschian debug -i socrates "my bug"
+nietzschian debug --intensity zarathustra "my bug"
+```
+
 ## How a Session Looks
 
 ```
@@ -115,6 +122,53 @@ Your Debugging Profile:
 ┗ Root cause speed       ████████░░  strong
 
 "Man is something that shall be overcome."
+ -- Friedrich Nietzsche
+```
+
+**Or when you call a test "flaky":**
+
+```
+$ nietzschian debug "integration test passes locally but fails in CI — it's flaky, I just rerun until it's green"
+
+Nietzschian Debugger [Nietzsche mode]
+
+
+[Turn 1]
+"Flaky." The word you reach for when a test has found something true and
+you'd rather it hadn't. A test that fails one run in three isn't random —
+it's telling you something is ordered that you assumed was not.
+
+What does CI have, or do in a different order, that your machine does not?
+
+> idk, maybe the database isn't ready yet
+
+[Turn 2]
+"Maybe" — you named a suspect and refused to question it in the same
+breath. A database that wasn't ready would throw a connection error, not a
+wrong answer. Unless your test is reading rows another test wrote.
+
+Do your tests share a database, and are they guaranteed to run in order?
+
+> ...they share one. locally they always run alphabetically
+
+[Turn 3]
+There it is. "Flaky" was the mask on a race you refused to see — two tests
+fighting over the same rows, hidden on your machine by an accident of
+alphabetical ordering that CI parallelizes away. The test was never flaky.
+It was honest, and you were not.
+
+Will you isolate the data, or keep rolling the dice until they fall green?
+
+> oh. found it
+
+Session Complete -- 3 questions to root cause (Solved)
+
+Your Debugging Profile:
+┣ Assumption-checking    ███████░░░  strong
+┣ Evidence-gathering     █████░░░░░  moderate
+┗ Root cause speed       ████████░░  strong
+
+"No victor believes in chance."
  -- Friedrich Nietzsche
 ```
 
