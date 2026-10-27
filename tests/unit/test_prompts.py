@@ -22,7 +22,7 @@ class TestGetSystemPrompt:
         assert "<persona>" in prompt
         assert "<behavioral_constraints>" in prompt
         assert "<intensity_rules>" in prompt
-        assert "confrontational" in prompt
+        assert "tuning fork" in prompt
 
     def test_produces_prompt_for_zarathustra(self) -> None:
         prompt = get_system_prompt("zarathustra", "My API is slow")
@@ -78,7 +78,7 @@ class TestGetSystemPrompt:
         for intensity in ("socrates", "nietzsche", "zarathustra"):
             prompt = get_system_prompt(intensity, "test")  # type: ignore[arg-type]
             assert "NEVER provide solutions" in prompt
-            assert "Every response MUST contain at least one question" in prompt
+            assert "Every response MUST contain EXACTLY ONE question" in prompt
 
     def test_produces_distinct_prompts_for_each_intensity(self) -> None:
         s = get_system_prompt("socrates", "test")

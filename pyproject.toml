@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "nietzschian-debugger"
 version = "0.1.0"
-description = "The anti-AI debugger. What doesn't kill your code makes it stronger. Confrontational questioning for developers."
+description = "It won't fix your bug. It'll fix you. What doesn't kill your code makes it stronger. Confrontational questioning for developers."
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"

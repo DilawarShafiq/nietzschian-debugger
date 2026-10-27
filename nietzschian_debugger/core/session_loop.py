@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from dataclasses import dataclass
 from typing import Optional
 
@@ -15,7 +14,6 @@ from .session import add_turn, add_code_file
 from .context_manager import check_and_summarize, build_message_array
 from ..quotes.selector import select_quote
 from ..ui.renderer import (
-    stream_to_terminal,
     new_line,
     display_session_header,
     display_dim,
@@ -195,7 +193,12 @@ def _generate_valid_question(
     full_text = ""
 
     def on_text(text: str) -> None:
-        stream_to_terminal(text)
+        # Buffer silently. The validated question is printed exactly once by the
+        # caller under the [Turn N] header. Streaming it live here printed it a
+        # second time (the single-line \r\033[K clear could not erase a
+        # multi-line response), and could flash text that validation then
+        # replaced via reprompt/fallback.
+        pass
 
     def on_complete(text: str) -> None:
         nonlocal full_text
@@ -210,9 +213,6 @@ def _generate_valid_question(
         model,
         StreamCallbacks(on_text=on_text, on_complete=on_complete, on_error=on_error),
     )
-
-    # Clear the streamed output line
-    sys.stdout.write("\r\033[K")
 
     validation = validate_response(full_text)
     if validation.valid:

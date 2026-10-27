@@ -4,7 +4,7 @@
 
 > "What doesn't kill your code makes it stronger."
 
-The anti-AI. Every other tool gives you answers. Nietzschian Debugger **confronts you with questions**.
+**It won't fix your bug. It'll fix you.** Every other tool hands you the answer; Nietzschian Debugger hands the question back.
 
 You paste your bug. It doesn't fix it. Instead, it:
 
@@ -17,21 +17,22 @@ You paste your bug. It doesn't fix it. Instead, it:
 
 AI is making developers weaker. Copy-paste from ChatGPT, ship, repeat. Nobody understands their own code anymore. **Nietzschian Debugger forges stronger developers** — through struggle, not shortcuts.
 
+This isn't anti-AI — it runs on Claude, on purpose. It's anti-*outsourcing-your-thinking*. Every other tool uses the model to hand you the answer; this one uses it to hand the question back.
+
 > "He who has a why to debug can bear almost any how."
 
 ## Installation
 
 ```bash
-# Published release (npm, v0.1.0)
-npx nietzschian-debugger
-
-# Current source (Python 3.10+)
+# Python 3.10+
 pip install git+https://github.com/DilawarShafiq/nietzschian-debugger.git
 nietzschian debug "your bug"
 ```
 
+> **Note:** the current tool is the Python package above. The old `npx nietzschian-debugger` serves a stale pre-rewrite build and should not be used until the npm package is updated.
+
 **Requirements:**
-- Node.js >= 20 for the npm release, or Python >= 3.10 for the current source
+- Python >= 3.10
 - An Anthropic API key (BYOK — bring your own key)
 
 ## Setup
