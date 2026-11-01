@@ -2,18 +2,17 @@ import { useEffect, useRef, useState } from "react";
 import {
   estimateInputTokens, systemPrompt,
   providerNames, type Provider,
-  type ChatMessage, type ChatResponse, type ChatError, type Language, type Philosopher, type TokenUsage,
+  type ChatMessage, type Language, type Philosopher, type TokenUsage,
 } from "../shared/prompts.js";
+import { browserChat, browserChatError } from "../shared/browser-chat.js";
+import { DEFAULT_MODELS, PROVIDER_ENDPOINTS } from "../shared/providers.js";
 import { errors, partners, translations } from "./i18n.js";
 import { demoQuestions, demoReply, initialDemoTopics, type DemoTopic } from "../shared/demo.js";
 import { MessageContent } from "./MessageContent.js";
 
 type DisplayMessage = ChatMessage & { philosopher?: Philosopher; safety?: boolean; demo?: boolean };
-const apiBase = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 const avatarUrl = `${import.meta.env.BASE_URL}philosophers.png`;
 const initialUsage: TokenUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
-const liveAvailable = Boolean(apiBase) || import.meta.env.DEV
-  || ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname);
 
 function Avatar({ philosopher, large = false }: { philosopher: Philosopher; large?: boolean }) {
   return <span
@@ -44,7 +43,7 @@ export function App() {
   const [requests, setRequests] = useState(0);
   const [providerRequests, setProviderRequests] = useState(0);
   const [usage, setUsage] = useState<TokenUsage>(initialUsage);
-  const [model, setModel] = useState("Claude");
+  const [model, setModel] = useState(DEFAULT_MODELS.claude);
   const [showPrompt, setShowPrompt] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
   const lastMessage = useRef<HTMLDivElement>(null);
@@ -101,7 +100,7 @@ export function App() {
       setDraft("");
       return;
     }
-    if (!liveAvailable) { setError(t.liveUnavailable); return; }
+    if (!apiKey.trim()) { setError(errors[language].MISSING_KEY); return; }
     locked.current = true;
     setPending(true);
     setError(null);
@@ -109,33 +108,20 @@ export function App() {
     setMessages((previous) => [...previous, { role: "user", content: submitted }]);
     setDraft("");
     try {
-      const response = await fetch(`${apiBase}/api/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: AbortSignal.timeout(100000),
-        body: JSON.stringify({
-          language, philosopher, provider, messages: submittedMessages, fictionalCase: true,
-          ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
-        }),
+      const result = await browserChat({
+        language, philosopher, provider, messages: submittedMessages, fictionalCase: true,
+        apiKey: apiKey.trim(),
       });
-      if (!response.ok) {
-        const failure: ChatError = await response.json();
-        addUsage(failure.usage, failure.providerRequests);
-        throw new Error(errors[language][failure.error] || errors[language].PROVIDER_UNAVAILABLE);
-      }
-      const result: ChatResponse = await response.json();
-      if (!result.reply || !result.usage || !Number.isFinite(result.usage.input)) {
-        throw new Error(errors[language].PROVIDER_UNAVAILABLE);
-      }
       addUsage(result.usage, result.providerRequests);
       setModel(result.model);
       setMessages((previous) => [
         ...previous, { role: "assistant", content: result.reply, philosopher, safety: result.safety },
       ]);
-    } catch (failure) {
-      setError(failure instanceof TypeError || (failure instanceof DOMException)
-        ? errors[language].PROVIDER_UNAVAILABLE
-        : failure instanceof Error ? failure.message : errors[language].PROVIDER_UNAVAILABLE);
+    } catch (error) {
+      const failure = browserChatError(error);
+      console.warn("Direct provider request failed.", { provider, code: failure.error });
+      addUsage(failure.usage, failure.providerRequests);
+      setError(errors[language][failure.error]);
       setMessages((previous) => previous.slice(0, -1));
       setDraft(submitted);
     } finally {
@@ -162,7 +148,7 @@ export function App() {
     if (pending || value === provider) return;
     if (messages.length && !window.confirm(t.switchProvider)) return;
     setProvider(value); setMessages([]); setDraft(""); setError(null);
-    setApiKey(""); setConsent(false); setModel(providerNames[value]);
+    setApiKey(""); setConsent(false); setModel(DEFAULT_MODELS[value]);
   }
 
   return (
@@ -187,13 +173,13 @@ export function App() {
           <select id="chat-engine" value={engine} disabled={pending}
             onChange={(event) => switchEngine(event.target.value === "live" ? "live" : "demo")}>
             <option value="demo">{t.demo}</option>
-            <option value="live" disabled={!liveAvailable}>{t.live}</option>
+            <option value="live">{t.live}</option>
           </select>
           <div className="language-row"><span>{t.language}</span><div className="language-toggle" aria-label={t.language}>
             {(["nl", "en"] as Language[]).map((value) => <button key={value} aria-pressed={language === value}
               disabled={pending} onClick={() => { setLanguage(value); setError(null); }}>{value.toUpperCase()}</button>)}
           </div></div>
-          {engine === "demo" && <small className="key-help demo-sidebar-help">{liveAvailable ? t.demoPrivacy : t.liveUnavailable}</small>}
+          {engine === "demo" && <small className="key-help demo-sidebar-help">{t.demoPrivacy}</small>}
         </div>
       </aside>
 
@@ -218,7 +204,7 @@ export function App() {
             {apiKey && <button className="clear-key" disabled={pending} onClick={() => setApiKey("")}>{t.keyClear}</button>}
           </div>
           <p>{engine === "demo" ? t.demoNotice : t.keyHelp} {provider === "greenpt" && t.providerHelp}</p>
-          {engine === "live" && <small title={apiBase || window.location.origin}>{t.backend}: {apiBase ? new URL(apiBase).host : window.location.host}</small>}
+          {engine === "live" && <small>{t.endpoint}: {PROVIDER_ENDPOINTS[provider]} · {DEFAULT_MODELS[provider]}</small>}
         </section>
         <div className="chat-layout">
           <section className="conversation" aria-label={t.newChat}>

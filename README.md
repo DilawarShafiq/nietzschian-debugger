@@ -453,8 +453,6 @@ device, diagnostic system, or treatment recommender.
 ```bash
 cd web
 npm ci
-# Optional: create web/.env and set ANTHROPIC_API_KEY and CLAUDE_MODEL.
-# A server-side key in the repository's existing .env is also supported locally.
 npm run dev
 # Open http://127.0.0.1:3080
 ```
@@ -471,27 +469,31 @@ Demo conversation text stays in page memory; it is not sent to a backend. Demo
 answers have a separate counter: chatrequests, model calls, and actual tokens
 remain zero. The token estimate is explicitly hypothetical in demo mode.
 
-Select **Live model** to use the backend locally, or with a configured separate
-backend. This option is unavailable on GitHub Pages without a backend URL.
+Select **Live model** for direct browser calls, locally or on GitHub Pages.
+No separate backend, server-side key, or repository variable is required.
 Select **Claude** or **GreenPT** and enter that provider's key in the top connection
 panel. Switching provider clears the conversation and key to prevent accidentally
 sending them to another service. Keys stay only in page memory
-and is sent to the Express backend in the JSON body of `POST /api/chat`. It is not
-saved in browser storage or echoed in responses. Use only a backend you trust:
-its operator and browser scripts/extensions can access the key. Clearing the field
+and are sent directly to the selected provider in authentication headers, not
+to Express or a proxy. They are not saved in browser storage or echoed in responses.
+Browser scripts/extensions can access the key: this is a personal bring-your-own-key
+demo, not a way to hide a shared operator key. Clearing the field
 or refreshing forgets it; that does not erase provider-side records. Never put keys
 in `VITE_` variables, source files, GitHub Pages builds, or URLs.
 
 Live mode uses the real Anthropic SDK for Claude and an OpenAI-compatible SDK for
 GreenPT, not canned demo responses. The default Claude model is
-`claude-haiku-4-5-20251001`; override it with `CLAUDE_MODEL`. Calls may incur
-charges. Invalid keys, missing configuration, provider errors, and rate limits are
+`claude-haiku-4-5-20251001`; the GreenPT default is
+`mistral-small-3.2-24b-instruct-2506`. Browser defaults are defined in
+`web/shared/providers.ts`; server environment variables do not change them.
+Both SDKs explicitly opt in to browser access with `dangerouslyAllowBrowser: true`.
+Calls may incur charges. Invalid keys, provider errors, and rate limits are
 shown explicitly. A response failing question/advice heuristics is retried once;
 this is not a clinical safety guarantee. No conversations are persisted by this app.
 Use fictional or de-identified practice cases only, and an approved provider.
 
 Counters show browser chat requests (including failures), model call attempts
-reported by the backend, and actual input/output/cache tokens returned by the provider.
+made by the browser, and actual input/output/cache tokens returned by the provider.
 Usage is cumulative across providers for this page session. For GreenPT, cached
 prompt tokens (when reported) are separated from input to avoid double counting;
 cache-write counts are not exposed by this adapter. Missing provider usage fails
@@ -514,33 +516,33 @@ Raw HTML is disabled, unsafe link protocols are filtered, and embedded remote im
 are not loaded. The composer uses larger text, a resizable multiline input, and
 page reflow rather than a fixed viewport height so browser zoom does not squeeze it.
 
-Tests use an injected fake provider and never spend model credits. The server binds
-to `127.0.0.1` by default, limits calls to 20 requests per IP per ten minutes, and
-does not log prompts or keys. This demo has **no authentication**: do not expose
-a paid server key publicly. CORS is not authentication or an abuse-prevention system.
+Tests use injected fake transports and never spend model credits. Prompt assembly,
+input validation, response heuristics, and one rewrite are shared with the retained
+Express API. The frontend does not call that API. Browser calls do not receive its
+20-requests-per-IP limiter; your provider's quotas apply. Set spending limits on
+your personal key/account. The app logs only sanitized error codes, not prompts or keys.
 
 ### GreenPT connection
 
 The [official quickstart](https://docs.greenpt.ai/get-started) documents an
-OpenAI-compatible EU base URL, `https://api.greenpt.ai/v1`. The backend calls
+OpenAI-compatible EU base URL, `https://api.greenpt.ai/v1`. The browser calls
 `POST /chat/completions` with bearer authentication. Users cannot substitute a
 custom provider URL, preventing accidental key transmission to arbitrary endpoints.
 
-Configure a server-side key, or enter a temporary key in the top UI panel:
-
-```text
-GREENPT_API_KEY=your-key
-GREENPT_MODEL=mistral-small-3.2-24b-instruct-2506
-```
+Enter your own temporary key in the top UI panel.
 
 The default is listed in the [official model catalogue](https://docs.greenpt.ai/models);
-check availability for your account before use and override `GREENPT_MODEL` as needed.
-Model selection is server-controlled. Do not assume a regional endpoint alone
+check availability for your account before use. Do not assume a regional endpoint alone
 establishes clinical/privacy approval: review your organisation's provider agreements.
 The integration is tested with fake completions; a live GreenPT account/key is
-required to validate an actual completion.
+required to validate an actual completion. A test preflight returned 403 without
+CORS permission, so browser support is not confirmed. The UI nevertheless attempts
+the direct request as selected by the user. A network/CORS/timeout failure shows an
+explicit message; there is **no proxy or server fallback**. Browsers cannot reliably
+distinguish CORS from other fetch failures. A readable HTTP 403 is shown separately
+as denied access, not proof of a CORS block.
 
-### GitHub Pages: scripted demo without a server
+### GitHub Pages: scripted demo and direct live calls without a server
 
 The static demo needs **no API key, Express host, or repository variable**.
 In Settings > Pages select **GitHub Actions**. The
@@ -550,54 +552,32 @@ and deploys `web/dist/client` on web/workflow changes pushed to `main` or
 
 The workflow is restricted to `bartvanderwal/nietzschian-diagnoser` and uses the
 `/nietzschian-diagnoser/` asset base path. It does not publish the research proposal,
-server source, environment files, or API keys.
+Express entrypoints, environment files, or API keys. Shared prompt, validation,
+and provider-client code is intentionally bundled into the frontend.
 
 Expected URL: <https://bartvanderwal.github.io/nietzschian-diagnoser/>.
 
-### Optional: GitHub Pages frontend + separate Express backend
-
-GitHub Pages (like GitLab Pages) cannot run Express. The current app deliberately
-uses an Express backend for live providers. This is an architecture choice, not a
-universal CORS limitation: Claude's official SDK supports opt-in browser access
-with `dangerouslyAllowBrowser: true`, with increased exposure of the user's key.
-A no-key preflight from the Pages origin was allowed by Claude during testing;
-the equivalent GreenPT check returned 403 without CORS permission from the test
-environment, so direct-browser GreenPT support has not been verified. This app
-does not currently implement direct-browser provider calls.
-
-Deploy the Node backend separately with HTTPS,
-install dependencies with `npm ci`, build with `npm run build`, and run `npm start`
-from the web directory. Configure:
-
-```text
-HOST=0.0.0.0
-PORT=3080
-FRONTEND_ORIGIN=https://bartvanderwal.github.io
-ALLOW_SERVER_KEY=false
-CLAUDE_MODEL=claude-haiku-4-5-20251001
-```
-
-With `FRONTEND_ORIGIN` configured, visitors must supply their own temporary key
-unless `ALLOW_SERVER_KEY=true` is explicitly enabled. Only the configured origin
-and same-origin clients receive browser access. Use HTTPS end-to-end. Configure
-your hosting proxy not to record request bodies, and add authentication and proper
-operator-managed quotas before a public/production deployment.
-
-To enable live providers on Pages, set the fork's repository variable `CLINICIAN_API_URL` to the HTTPS
-backend URL (no `/api/chat` suffix). In Settings > Pages select **GitHub Actions**,
-then manually run the **Clinician demo on GitHub Pages (fork only)** workflow from
-the feature branch. It publishes only `web/dist/client`, never server files or keys.
-Leave this variable unset for the server-free scripted demo. The workflow does
-not provision a live backend.
+GitHub Pages (like GitLab Pages) cannot run Express, but direct provider calls
+only require a static frontend and provider CORS permission. Claude allowed a
+preflight from the Pages origin during testing. A real paid completion has not
+been tested without a user-provided key. `CLINICIAN_API_URL` and
+`VITE_API_BASE_URL` are no longer used by this frontend or workflow.
 
 For a manual static build:
 
 ```bash
 BASE_PATH=/nietzschian-diagnoser/ npm run build
-# Optional live backend:
-# BASE_PATH=/nietzschian-diagnoser/ \
-# VITE_API_BASE_URL=https://your-backend.example.com npm run build
 ```
+
+### Retained Express API (not used by the chat UI)
+
+`npm run dev` and `npm start` still serve the UI and expose the optional
+`POST /api/chat` API for existing clients. Server keys/models can be configured
+using `web/.env.example`; they are never embedded into the frontend and cannot
+replace the UI key. The API binds to `127.0.0.1` by default and limits requests
+to 20 per IP per ten minutes. With `FRONTEND_ORIGIN` configured, server-key use
+requires explicit `ALLOW_SERVER_KEY=true`. This API has no authentication:
+do not expose an operator-funded key publicly. CORS is not authentication.
 
 The local Python CLI and separate upstream security PR are unaffected.
 

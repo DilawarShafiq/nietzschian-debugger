@@ -98,7 +98,8 @@ export type ChatResponse = {
 
 export type ErrorCode =
   | "INVALID_REQUEST" | "MISSING_KEY" | "PROVIDER_AUTH" | "PROVIDER_RATE_LIMIT"
-  | "PROVIDER_UNAVAILABLE" | "INVALID_RESPONSE" | "RATE_LIMIT" | "FORBIDDEN";
+  | "PROVIDER_UNAVAILABLE" | "PROVIDER_NETWORK" | "PROVIDER_FORBIDDEN"
+  | "INVALID_RESPONSE" | "RATE_LIMIT" | "FORBIDDEN";
 
 export type ChatError = {
   error: ErrorCode;

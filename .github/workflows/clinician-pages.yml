@@ -31,16 +31,10 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: web/package-lock.json
-      - name: Validate optional backend URL
-        env:
-          API_URL: ${{ vars.CLINICIAN_API_URL }}
-        run: |
-          node -e "if (process.env.API_URL) { const u = new URL(process.env.API_URL); if (u.protocol !== 'https:') throw new Error('CLINICIAN_API_URL must use HTTPS.'); }"
       - name: Build and test
         working-directory: web
         env:
           BASE_PATH: /nietzschian-diagnoser/
-          VITE_API_BASE_URL: ${{ vars.CLINICIAN_API_URL }}
         run: |
           npm ci
           npm test
