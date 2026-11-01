@@ -1,4 +1,20 @@
-# Nietzschian Debugger
+# Nietzschian Diagnoser — AI Clinician
+
+An educational Dutch/English reflection app for questioning assumptions and potentially harmful biases in clinical reasoning. It asks questions rather than providing diagnoses or treatment advice. Use fictional or de-identified practice cases only.
+
+**[Open the web app on GitHub Pages](https://bartvanderwal.github.io/nietzschian-diagnoser/)** · [Run the web app locally](#webdemo-nietzschian-ai-clinician-fork-only) · [GreenPT VPS backend manual](web/BACKEND-HANDLEIDING.md)
+
+![Published GitHub Pages UI: Karl Popper in a Dutch scripted reflection conversation, with connection settings, usage and examples collapsed](assets/clinician-pages.png)
+
+*Screenshot of the published GitHub Pages app in scripted demo mode. No live model calls or patient data. Karl Popper photograph: [LSE Library / Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Karl_Popper.jpg), via Flickr Commons (no known copyright restrictions); displayed with circular cropping.*
+
+## Original project and attribution
+
+This fork is based on **[Nietzschian Debugger by Dilawar Shafiq](https://github.com/DilawarShafiq/nietzschian-debugger)**, licensed under [MIT](LICENSE). The original project applies philosophical questioning to code debugging; this fork adds a bilingual clinical-reflection web UI, scripted examples, four philosophical partners, and Claude/GreenPT integration. These additions are adaptations, not clinical validation or an endorsement by the original author.
+
+The Python debugging documentation below is retained for the original CLI. **`pip install nietzschian-debugger` installs the original package, not this fork's web app.** To run this fork, clone this repository and follow the [web app instructions](#webdemo-nietzschian-ai-clinician-fork-only).
+
+## Original Nietzschian Debugger CLI
 
 ![Nietzschian Debugger: the debugger that hands the question back](assets/banner.png)
 
@@ -382,6 +398,44 @@ honest thing you've written all week.
 
 ## Development
 
+### Run this fork locally
+
+Use an editable install in a virtual environment so the command runs this checkout,
+not a separately installed PyPI copy:
+
+```bash
+cd /Users/bartvanderwal/Code/nietzschian-diagnoser
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[dev,providers]"
+
+# Verify which source is being imported
+python -c "import nietzschian_debugger; print(nietzschian_debugger.__file__)"
+
+# New fork-only mode: questions about a personal situation, not debugging
+nietzschian reflect "I keep postponing decisions"
+nietzschian reflect "I keep postponing decisions" --model ollama:llama3
+```
+
+`reflect` is psychology-informed self-reflection, **not diagnosis, treatment, or
+therapy**. It asks one question at a time, with a retry for responses failing the
+question/answer heuristics. These checks are not a guarantee of clinical safety.
+Urgent safety responses may override question-only behavior. Stop with `quit`,
+`exit`, Ctrl+C, or Ctrl+D.
+
+Text goes to the selected model provider. Unlike debugging mode, reflection does
+not automatically read file paths, execute code, score you, or save sessions.
+Avoid sensitive details with unapproved hosted providers; a local model is also
+supported. Long conversations may reach the provider's context limit.
+
+Change the reflection persona in
+[`SYSTEM_PROMPT`](nietzschian_debugger/commands/reflect.py); edits take effect on the
+next run without reinstalling. Existing `debug`, `roast`, and `predict` commands
+remain unchanged on this feature branch.
+
+The psychology feature is fork-only. The independent `security/predict-sandbox`
+branch contains the upstream sandbox proposal; it is not part of this feature.
+
 ```bash
 # Clone and install
 git clone https://github.com/DilawarShafiq/nietzschian-debugger.git
@@ -395,7 +449,165 @@ pytest
 nietzschian debug "test problem"
 ```
 
-## Tech Stack
+## Webdemo: Nietzschian AI Clinician (fork only)
+
+The fork includes a React chat interface with Dutch/English UI and **two explicit
+system prompts**, combined with Socrates, Nietzsche, Zarathustra, or Karl Popper mode instructions.
+This yields **eight assembled prompts**: four thinkers, each in Dutch and English.
+The selected instructions are actually sent to the model for each live turn; switching
+the thinker affects subsequent turns, not just the avatar. The demo has separate
+fixed answers for each thinker. Popper focuses on falsifiability, counterevidence,
+testable predictions, and distinguishing lack of refutation from proof.
+These are clinical-reflection adaptations, not copies of the Python debugger prompts.
+The three original partners have generated portraits; Popper uses a photograph from [LSE Library / Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Karl_Popper.jpg), identified by Flickr Commons as having no known copyright restrictions. The UI crops the photograph to a circle and displays photo credits, the original image link, and attribution to [Dilawar Shafiq's Nietzschian Debugger](https://github.com/DilawarShafiq/nietzschian-debugger) (MIT). You can inspect the active
+prompt in the UI. This is an educational reflection demo, not a clinician, medical
+device, diagnostic system, or treatment recommender.
+
+### Run locally
+
+```bash
+cd web
+npm ci
+npm run dev
+# Open http://127.0.0.1:3080
+```
+
+The app starts in **Scripted demo** mode. Suggested topics produce fixed,
+philosopher-specific reflection questions in Dutch or English, with follow-up
+choices after each answer. The themes include working hypotheses, counterevidence,
+interdisciplinary perspectives, uncertainty, longitudinal evaluation, and human
+responsibility. They illustrate the research concept, not a validated clinical
+protocol or a claim of improved patient outcomes.
+
+Free text receives an explicit notice that no actual LLM integration is running.
+Demo conversation text stays in page memory; it is not sent to a backend. Demo
+answers have a separate counter: chatrequests, model calls, and actual tokens
+remain zero. The token estimate is explicitly hypothetical in demo mode.
+
+Select **Claude** or **GreenPT** in the combined mode dropdown for live calls, locally or on GitHub Pages.
+No separate backend, server-side key, or repository variable is required.
+Select **Claude** or **GreenPT** and enter that provider's key in the top connection
+panel. Switching provider clears the conversation and key to prevent accidentally
+sending them to another service. Keys stay only in page memory
+and are sent directly to the selected provider in authentication headers, not
+to Express or a proxy. They are not saved in browser storage or echoed in responses.
+Browser scripts/extensions can access the key: this is a personal bring-your-own-key
+demo, not a way to hide a shared operator key. Clearing the field
+or refreshing forgets it; that does not erase provider-side records. Never put keys
+in `VITE_` variables, source files, GitHub Pages builds, or URLs.
+
+Live mode uses the real Anthropic SDK for Claude and an OpenAI-compatible SDK for
+GreenPT, not canned demo responses. The default Claude model is
+`claude-haiku-4-5-20251001`; the GreenPT default is
+`mistral-small-3.2-24b-instruct-2506`. Browser defaults are defined in
+`web/shared/providers.ts`; server environment variables do not change them.
+Both SDKs explicitly opt in to browser access with `dangerouslyAllowBrowser: true`.
+Calls may incur charges. Invalid keys, provider errors, and rate limits are
+shown explicitly. A response failing question/advice heuristics is retried once;
+this is not a clinical safety guarantee. No conversations are persisted by this app.
+Use fictional or de-identified practice cases only, and an approved provider.
+
+Counters show browser chat requests (including failures), model call attempts
+made by the browser, and actual input/output/cache tokens returned by the provider.
+Usage is cumulative across providers for this page session. For GreenPT, cached
+prompt tokens (when reported) are separated from input to avoid double counting;
+cache-write counts are not exposed by this adapter. Missing provider usage fails
+explicitly instead of being reported as zero.
+Retry usage is included. Failed requests can have unknown usage. The next-input
+estimate uses characters divided by four plus message overhead, including the
+prompt and full conversation history; it is **not an exact provider tokenizer**.
+Output is capped at 512 tokens per provider call. Conversation size is capped
+explicitly; it is never silently truncated. Counters reset on page reload, not on
+starting a new conversation. Static-asset requests and CORS preflights are excluded.
+
+```bash
+npm test
+npm run build
+npm start
+```
+
+Markdown responses render as formatted text, lists, emphasis, code, and tables.
+The chat-first layout keeps four partners, language selection and a spacious composer visible. One dropdown combines **Demo mode (no token needed)**, **Claude** and **GreenPT**. Connection settings and token counters are collapsed under **Connection** and **Usage**; background information, the system prompt and attribution remain accessible under **About this demo** and **About & sources**. Compact suggestion chips sit above the conversation; new messages append below them.
+Live chat is hidden until you explicitly validate the connection (button or Enter in the key field). Validation checks authentication and configured model availability through the provider's models API, without a paid test completion. Editing or clearing a key, or switching provider/route/engine, invalidates that check. Backend mode validates the server's provider key using authenticated `POST /api/validate`. Successful validation is not a guarantee of future quota or completion permissions; those errors remain explicit.
+Raw HTML is disabled, unsafe link protocols are filtered, and embedded remote images
+are not loaded. The composer uses larger text, a resizable multiline input, and
+page reflow rather than a fixed viewport height so browser zoom does not squeeze it.
+
+Tests use injected fake transports and never spend model credits. Prompt assembly,
+input validation, response heuristics, and one rewrite are shared with the retained
+Express API. The frontend does not call that API. Browser calls do not receive its
+20-requests-per-IP limiter; your provider's quotas apply. Set spending limits on
+your personal key/account. The app logs only sanitized error codes, not prompts or keys.
+
+### GreenPT connection
+
+The [official quickstart](https://docs.greenpt.ai/get-started) documents an
+OpenAI-compatible EU base URL, `https://api.greenpt.ai/v1`. The browser calls
+`POST /chat/completions` with bearer authentication. Users cannot substitute a
+custom provider URL, preventing accidental key transmission to arbitrary endpoints.
+
+Enter your own temporary key in the top UI panel.
+
+The default is listed in the [official model catalogue](https://docs.greenpt.ai/models);
+check availability for your account before use. Do not assume a regional endpoint alone
+establishes clinical/privacy approval: review your organisation's provider agreements.
+The integration is tested with fake completions; a live GreenPT account/key is
+required to validate an actual completion. A test preflight returned 403 without
+CORS permission, so browser support is not confirmed. The UI nevertheless attempts
+the direct request as selected by the user. A network/CORS/timeout failure shows an
+explicit message; there is **no proxy or server fallback**. Browsers cannot reliably
+distinguish CORS from other fetch failures. A readable HTTP 403 is shown separately
+as denied access, not proof of a CORS block.
+
+### GitHub Pages: scripted demo and direct live calls without a server
+
+The static demo needs **no API key, Express host, or repository variable**.
+In Settings > Pages select **GitHub Actions**. The
+`Clinician demo on GitHub Pages (fork only)` workflow tests and builds the frontend
+and deploys `web/dist/client` on web/workflow changes pushed to `main` or
+`feature/psychology-reflection`, or on manual dispatch.
+
+The workflow is restricted to `bartvanderwal/nietzschian-diagnoser` and uses the
+`/nietzschian-diagnoser/` asset base path. It does not publish the research proposal,
+Express entrypoints, environment files, or API keys. Shared prompt, validation,
+and provider-client code is intentionally bundled into the frontend.
+
+Expected URL: <https://bartvanderwal.github.io/nietzschian-diagnoser/>.
+
+GitHub Pages (like GitLab Pages) cannot run Express, but direct provider calls
+only require a static frontend and provider CORS permission. Claude allowed a
+preflight from the Pages origin during testing. A real paid completion has not
+been tested without a user-provided key. An optional `CLINICIAN_API_URL`
+repository variable configures an explicit GreenPT backend route on Pages
+(`VITE_API_BASE_URL` for a local build). Claude remains direct. Without a URL,
+both providers remain direct.
+
+For a manual static build:
+
+```bash
+BASE_PATH=/nietzschian-diagnoser/ npm run build
+```
+
+### Retained Express API (not used by the chat UI)
+
+`npm run dev` and `npm start` still serve the UI and expose the optional
+`POST /api/chat` API for existing clients. Server keys/models can be configured
+using `web/.env.example`; they are never embedded into the frontend and cannot
+replace the UI key. The API binds to `127.0.0.1` by default and limits requests
+to 20 per IP per ten minutes. With `FRONTEND_ORIGIN` configured, server-key use
+requires explicit `ALLOW_SERVER_KEY=true`. Enabling server-key use requires
+`BACKEND_ACCESS_TOKEN` with at least 32 characters; clients must send it in a
+bearer header. CORS is not authentication. The token is a shared demo credential,
+not individual accounts or a hard spending limit.
+
+For a non-root Docker/OCI image, Compose configuration, HTTPS reverse proxy
+setup and Pages connection, see [the VPS user manual](web/BACKEND-HANDLEIDING.md).
+The GreenPT key is configured at runtime, excluded from the image, and never
+sent to the frontend. This avoids browser CORS but cannot fix a provider's 403.
+
+The local Python CLI and separate upstream security PR are unaffected.
+
+## Python Tech Stack
 
 - Python >= 3.10
 - Claude API via the Anthropic SDK

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#182a24"/>
+  <text x="13" y="49" font-family="Georgia,serif" font-size="44" fill="#eef3ed">N</text>
+  <path d="M49 8 52 15 59 18 52 21 49 28 46 21 39 18 46 15Z" fill="#bdd6c4"/>
+</svg>

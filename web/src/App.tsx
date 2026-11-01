@@ -1,0 +1,380 @@
+import { useEffect, useRef, useState } from "react";
+import {
+  estimateInputTokens, systemPrompt,
+  providerNames, type Provider,
+  type ChatMessage, type Language, type Philosopher, type TokenUsage,
+} from "../shared/prompts.js";
+import { browserChat, browserChatError } from "../shared/browser-chat.js";
+import { DEFAULT_MODELS, PROVIDER_ENDPOINTS } from "../shared/providers.js";
+import { backendChat, backendOrigin, BackendChatError, validateBackend } from "../shared/backend-chat.js";
+import { validateProvider } from "../shared/validate-provider.js";
+import { errors, partners, translations } from "./i18n.js";
+import { demoQuestions, demoReply, initialDemoTopics, type DemoTopic } from "../shared/demo.js";
+import { MessageContent } from "./MessageContent.js";
+
+type DisplayMessage = ChatMessage & { philosopher?: Philosopher; safety?: boolean; demo?: boolean };
+const avatarUrl = `${import.meta.env.BASE_URL}philosophers.png`;
+const initialUsage: TokenUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+const configuredBackend = import.meta.env.VITE_API_BASE_URL
+  ? backendOrigin(import.meta.env.VITE_API_BASE_URL) : "";
+
+function Avatar({ philosopher, large = false }: { philosopher: Philosopher; large?: boolean }) {
+  return <span
+    className={`avatar ${large ? "avatar-large" : ""}`}
+    role="img"
+    aria-label={partners[philosopher].name}
+    style={{
+      backgroundImage: `url("${philosopher === "popper" ? `${import.meta.env.BASE_URL}popper.png` : avatarUrl}")`,
+      backgroundSize: philosopher === "popper" ? "cover" : "300% auto",
+      backgroundPosition: `${partners[philosopher].position} 30%`,
+    }}
+  />;
+}
+
+export function App() {
+  const [language, setLanguage] = useState<Language>("nl");
+  const [philosopher, setPhilosopher] = useState<Philosopher>("nietzsche");
+  const [messages, setMessages] = useState<DisplayMessage[]>([]);
+  const [draft, setDraft] = useState("");
+  const [apiKey, setApiKey] = useState("");
+  const [provider, setProvider] = useState<Provider>("claude");
+  const [greenptRoute, setGreenptRoute] = useState<"direct" | "backend">(configuredBackend ? "backend" : "direct");
+  const [backendToken, setBackendToken] = useState("");
+  const [consent, setConsent] = useState(false);
+  const [validated, setValidated] = useState(false);
+  const [validating, setValidating] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [engine, setEngine] = useState<"demo" | "live">("demo");
+  const [demoTopics, setDemoTopics] = useState<DemoTopic[]>(initialDemoTopics);
+  const [demoTurns, setDemoTurns] = useState(0);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [requests, setRequests] = useState(0);
+  const [providerRequests, setProviderRequests] = useState(0);
+  const [usage, setUsage] = useState<TokenUsage>(initialUsage);
+  const [model, setModel] = useState(DEFAULT_MODELS.claude);
+  const [showPrompt, setShowPrompt] = useState(false);
+  const dialog = useRef<HTMLDialogElement>(null);
+  const lastMessage = useRef<HTMLDivElement>(null);
+  const composer = useRef<HTMLTextAreaElement>(null);
+  const connectionPanel = useRef<HTMLDetailsElement>(null);
+  const locked = useRef(false);
+  const validationLocked = useRef(false);
+  const t = translations[language];
+  const partner = partners[philosopher];
+  const viaBackend = provider === "greenpt" && greenptRoute === "backend";
+  const nextMessages: ChatMessage[] = [
+    ...messages.map(({ role, content }) => ({ role, content })),
+    ...(draft.trim() ? [{ role: "user" as const, content: draft.trim() }] : []),
+  ];
+  const estimate = estimateInputTokens(language, philosopher, nextMessages);
+  const format = (number: number) => number.toLocaleString(language === "nl" ? "nl-NL" : "en-GB");
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+    document.title = translations[language].title;
+  }, [language]);
+  useEffect(() => { lastMessage.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [messages, pending]);
+  useEffect(() => {
+    if (showPrompt) dialog.current?.showModal();
+    else dialog.current?.close();
+  }, [showPrompt]);
+
+  function addUsage(value?: TokenUsage, calls = 0) {
+    if (value) {
+      setUsage((previous) => ({
+        input: previous.input + value.input, output: previous.output + value.output,
+        cacheRead: previous.cacheRead + value.cacheRead, cacheWrite: previous.cacheWrite + value.cacheWrite,
+      }));
+    }
+
+    setProviderRequests((previous) => previous + calls);
+  }
+
+  function invalidateConnection() {
+      setValidated(false); setConnectionError(null);
+    }
+
+    async function validateKey() {
+      if (validationLocked.current || pending) return;
+      if (!(viaBackend ? backendToken.trim() : apiKey.trim())) {
+        setConnectionError(errors[language][viaBackend ? "BACKEND_AUTH" : "MISSING_KEY"]); return;
+      }
+      validationLocked.current = true;
+      setValidating(true); setValidated(false); setConnectionError(null);
+      try {
+        const selectedModel = viaBackend
+          ? await validateBackend(configuredBackend, backendToken, provider)
+          : await validateProvider(provider, apiKey.trim(), DEFAULT_MODELS[provider], fetch, true);
+        setModel(selectedModel); setValidated(true);
+        if (connectionPanel.current) connectionPanel.current.open = false;
+      } catch (error) {
+        const failure = error instanceof BackendChatError ? error.failure : browserChatError(error);
+        console.warn("Connection validation failed.", { provider, code: failure.error });
+        setConnectionError(errors[language][failure.error]);
+      } finally {
+        validationLocked.current = false; setValidating(false);
+      }
+    }
+  async function send(topic?: DemoTopic) {
+    const submitted = topic ? demoQuestions[topic].label[language] : draft.trim();
+    if (locked.current || (engine === "live" && (!consent || !validated)) || !submitted) return;
+    const submittedMessages: ChatMessage[] = [
+      ...messages.map(({ role, content }) => ({ role, content })),
+      { role: "user", content: submitted },
+    ];
+    if (submittedMessages.length > 31 || submittedMessages.reduce((sum, message) => sum + message.content.length, 0) > 24000) {
+      setError(t.limit); return;
+    }
+    if (engine === "demo") {
+      setError(null);
+      setMessages((previous) => [
+        ...previous,
+        { role: "user", content: submitted },
+        { role: "assistant", content: demoReply(topic, language, philosopher), philosopher, demo: true },
+      ]);
+      setDemoTopics(topic ? demoQuestions[topic].next : demoTopics);
+      setDemoTurns((value) => value + 1);
+      setDraft("");
+      return;
+    }
+    if (viaBackend ? !backendToken.trim() : !apiKey.trim()) {
+      if (connectionPanel.current) connectionPanel.current.open = true;
+      setError(errors[language][viaBackend ? "BACKEND_AUTH" : "MISSING_KEY"]); return;
+    }
+    locked.current = true;
+    setPending(true);
+    setError(null);
+    setRequests((value) => value + 1);
+    setMessages((previous) => [...previous, { role: "user", content: submitted }]);
+    setDraft("");
+    try {
+      const input = {
+        language, philosopher, provider, messages: submittedMessages, fictionalCase: true,
+        ...(!viaBackend ? { apiKey: apiKey.trim() } : {}),
+      };
+      const result = viaBackend
+        ? await backendChat(configuredBackend, backendToken, input)
+        : await browserChat(input);
+      addUsage(result.usage, result.providerRequests);
+      setModel(result.model);
+      setMessages((previous) => [
+        ...previous, { role: "assistant", content: result.reply, philosopher, safety: result.safety },
+      ]);
+    } catch (error) {
+      const failure = error instanceof BackendChatError ? error.failure : browserChatError(error);
+      console.warn("Provider request failed.", { provider, viaBackend, code: failure.error });
+      addUsage(failure.usage, failure.providerRequests);
+      setError(errors[language][failure.error]);
+      if (["PROVIDER_AUTH", "PROVIDER_FORBIDDEN", "BACKEND_AUTH"].includes(failure.error)) {
+        setValidated(false); setConnectionError(errors[language][failure.error]);
+        if (connectionPanel.current) connectionPanel.current.open = true;
+      }
+      setMessages((previous) => previous.slice(0, -1));
+      setDraft(submitted);
+    } finally {
+      locked.current = false;
+      setPending(false);
+      composer.current?.focus();
+    }
+  }
+
+  function newChat() {
+    if (pending || validating || (messages.length && !window.confirm(t.reset))) return;
+    setMessages([]); setDraft(""); setError(null); composer.current?.focus();
+    setDemoTopics(initialDemoTopics);
+  }
+
+  function switchChatMode(value: "demo" | Provider) {
+    if (pending || validating || value === (engine === "demo" ? "demo" : provider)) return;
+    if (messages.length && !window.confirm(t.switchProvider)) return;
+    setEngine(value === "demo" ? "demo" : "live");
+    if (value !== "demo") { setProvider(value); setModel(DEFAULT_MODELS[value]); }
+    if (connectionPanel.current) connectionPanel.current.open = value !== "demo";
+    setMessages([]); setDraft(""); setError(null); setDemoTopics(initialDemoTopics);
+    setApiKey(""); setBackendToken(""); setConsent(false);
+    invalidateConnection();
+  }
+
+  function switchRoute(value: "direct" | "backend") {
+    if (pending || validating || value === greenptRoute) return;
+    if (messages.length && !window.confirm(t.switchProvider)) return;
+    setGreenptRoute(value); setMessages([]); setDraft(""); setError(null);
+    setApiKey(""); setBackendToken(""); setConsent(false); setModel(DEFAULT_MODELS.greenpt);
+    invalidateConnection();
+  }
+
+  return (
+    <div className="app">
+      <aside className="sidebar">
+        <div className="wordmark"><span className="logo">N<span>✦</span></span><div>Nietzschian<span>AI CLINICIAN</span></div></div>
+        <button className="new-chat" onClick={newChat} disabled={pending}><span>＋</span>{t.newChat}<span>↗</span></button>
+        <div className="sidebar-label">{t.choosePartner}</div>
+        <nav className="partners" aria-label={t.mode}>
+          {(Object.keys(partners) as Philosopher[]).map((id) => (
+            <button key={id} className={`partner-button ${philosopher === id ? "selected" : ""}`}
+              onClick={() => setPhilosopher(id)} disabled={pending} aria-pressed={philosopher === id}>
+              <Avatar philosopher={id} />
+              <span><strong>{partners[id].name}</strong><small>{partners[id].description[language]}</small></span>
+              {philosopher === id && <span className="selection-dot" />}
+            </button>
+          ))}
+        </nav>
+        <div className="settings">
+          <div className="language-row"><span>{t.language}</span><div className="language-toggle" aria-label={t.language}>
+            {(["nl", "en"] as Language[]).map((value) => <button key={value} aria-pressed={language === value}
+              disabled={pending} onClick={() => { setLanguage(value); setError(null); }}>{value.toUpperCase()}</button>)}
+          </div></div>
+          <details className="about-panel">
+            <summary>{t.about}</summary>
+            <p>{t.subtitle}</p>
+            <p>{t.introduction}</p>
+            <p>{t.demoHelp}</p>
+            <p>{engine === "demo" ? t.demoPrivacy : viaBackend ? t.backendHelp : t.privacyDetail}</p>
+            <button className="prompt-button" onClick={() => setShowPrompt(true)}>{t.prompt} ↗</button>
+          </details>
+          <details className="sources-panel">
+            <summary>{t.sources}</summary>
+          <div className="attribution">
+            <p>{t.upstreamCredit} <a href="https://github.com/DilawarShafiq/nietzschian-debugger"
+              target="_blank" rel="noopener noreferrer">Nietzschian Debugger · Dilawar Shafiq</a> (MIT).</p>
+            <p>{t.popperCredit} <a href="https://commons.wikimedia.org/wiki/File:Karl_Popper.jpg"
+              target="_blank" rel="noopener noreferrer">LSE Library / Wikimedia Commons</a>.
+              {" "}{t.photoRights} {" "}{t.photoCrop}</p>
+            <p><a href="https://nl.wikipedia.org/wiki/Karl_Popper"
+              target="_blank" rel="noopener noreferrer">Karl Popper · Wikipedia</a>
+              {" · "}<a href="https://upload.wikimedia.org/wikipedia/commons/4/43/Karl_Popper.jpg"
+                target="_blank" rel="noopener noreferrer">{t.originalPhoto}</a></p>
+          </div>
+          </details>
+        </div>
+      </aside>
+
+      <main className="main">
+        <header className="topbar">
+          <h1>{t.title}</h1>
+          <select className="engine-toggle" id="chat-engine" aria-label={t.chatEngine}
+            value={engine === "demo" ? "demo" : provider} disabled={pending || validating}
+            onChange={(event) => switchChatMode(event.target.value === "claude" ? "claude"
+              : event.target.value === "greenpt" ? "greenpt" : "demo")}>
+            <option value="demo">{t.demoMode}</option>
+            <option value="claude">Claude (Anthropic)</option><option value="greenpt">GreenPT (EU)</option>
+          </select>
+        </header>
+        <div className="utility-panels">
+        <details ref={connectionPanel} className="connection-panel">
+          <summary>{t.connection}{engine === "live" ? ` · ${providerNames[provider]}` : ""}</summary>
+          <div className="connection-fields">
+            {provider === "greenpt" && configuredBackend && <label htmlFor="greenpt-route">{t.route}
+              <select id="greenpt-route" value={greenptRoute} disabled={pending || validating}
+                onChange={(event) => switchRoute(event.target.value === "backend" ? "backend" : "direct")}>
+                <option value="direct">{t.directRoute}</option><option value="backend">{t.backendRoute}</option>
+              </select>
+            </label>}
+            {viaBackend ? <label htmlFor="backend-token">{t.backendToken}
+              <input id="backend-token" type="password" value={backendToken}
+                onChange={(event) => { setBackendToken(event.target.value); invalidateConnection(); }} autoComplete="off"
+                onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void validateKey(); } }}
+                spellCheck={false} disabled={pending || validating || engine === "demo"} maxLength={300} />
+            </label> : <label htmlFor="api-key">{providerNames[provider]} {t.keyTitle}
+              <input id="api-key" type="password" value={apiKey}
+                onChange={(event) => { setApiKey(event.target.value); invalidateConnection(); }}
+                onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void validateKey(); } }}
+                placeholder={provider === "claude" ? t.keyPlaceholder : "sk-…"} autoComplete="off"
+                spellCheck={false} disabled={pending || validating || engine === "demo"} maxLength={300} />
+            </label>}
+            {engine === "live" && <button className="clear-key" disabled={pending || validating}
+              onClick={() => void validateKey()}>{validating ? t.validating : t.validateKey}</button>}
+            {(apiKey || backendToken) && <button className="clear-key" disabled={pending || validating}
+              onClick={() => { setApiKey(""); setBackendToken(""); invalidateConnection(); }}>{t.keyClear}</button>}
+          </div>
+          {connectionError && <p className="error" role="alert">{connectionError}</p>}
+          {validated && <p role="status">{t.validated}</p>}
+          <p>{engine === "demo" ? t.demoNotice : viaBackend ? t.backendHelp : t.keyHelp}
+            {provider === "greenpt" && !viaBackend && t.providerHelp}</p>
+          {engine === "live" && <small>{viaBackend ? t.backendRoute : t.endpoint}: {viaBackend
+            ? `${configuredBackend}/api/chat` : PROVIDER_ENDPOINTS[provider]} · {!viaBackend && DEFAULT_MODELS[provider]}</small>}
+        </details>
+        <details className="usage-panel">
+          <summary>{t.usage}</summary>
+          <aside className="metrics" aria-label={t.stats}>
+            <h3>{t.stats}</h3>
+            <div className="metric-line"><span>{t.requestLabel}</span><strong>{format(requests)}</strong></div>
+            <div className="metric-line"><span>{t.providerLabel}</span><strong>{format(providerRequests)}</strong></div>
+            <div className="metric-line"><span>{t.demoTurns}</span><strong>{format(demoTurns)}</strong></div>
+            <h3>{t.tokens} · {model}</h3>
+            <div className="metric-line"><span>{t.input}</span><strong>{format(usage.input)}</strong></div>
+            <div className="metric-line"><span>{t.output}</span><strong>{format(usage.output)}</strong></div>
+            <div className="metric-line"><span>{t.cache}</span><strong>{format(usage.cacheRead)} / {format(usage.cacheWrite)}</strong></div>
+            <p className="metric-help">{engine === "demo" ? t.demoTokens : t.actualHelp}</p>
+            <div className="estimate"><span>{engine === "demo" ? t.hypothetical : t.estimated}</span><strong>≈ {format(estimate)}</strong><small>tokens</small></div>
+            <p className="metric-help">{t.estimateHelp}</p>
+            <p className="metric-help">{t.estimatedOutput}</p>
+          </aside>
+        </details>
+        </div>
+        {engine === "live" && !validated ? <div className="connection-gate">
+          <p role="status">{validating ? t.validating : t.validationRequired}</p>
+          <button className="clear-key" onClick={() => { if (connectionPanel.current) connectionPanel.current.open = true; }}>{t.connection}</button>
+        </div> : <div className="chat-layout">
+          <section className="conversation" aria-label={t.newChat}>
+            <div className="chat-scroll">
+              {engine === "demo" && <p className="demo-status" role="note">{t.demoNotice}</p>}
+              <div className="suggestion-chips" aria-label={t.examples}>
+                {engine === "demo" ? demoTopics.map(topic => (
+                  <button key={topic} onClick={() => void send(topic)} disabled={pending}>
+                    {demoQuestions[topic].label[language]}
+                  </button>
+                )) : t.suggestions.map(suggestion => (
+                  <button key={suggestion} disabled={pending}
+                    onClick={() => { setDraft(suggestion); composer.current?.focus(); }}>{suggestion}</button>
+                ))}
+              </div>
+              {messages.length === 0 ? <div className="welcome">
+                <div className="portrait-ring"><Avatar philosopher={philosopher} large /></div>
+                <span className="eyebrow">{partner.name} · {partner.description[language]}</span>
+                <h2>{t.welcome}</h2><p>{t.welcomeBody}</p>
+              </div> : <div className="messages" role="log" aria-live="polite" aria-relevant="additions">
+                {messages.map((message, index) => <article key={index} className={`message ${message.role}`}>
+                  {message.role === "assistant" ? <Avatar philosopher={message.philosopher || philosopher} /> : <span className="user-avatar">↗</span>}
+                  <div><div className="message-name">{message.role === "user" ? t.you : partners[message.philosopher || philosopher].name}
+                    {message.role === "assistant" && <small>{message.demo ? t.demoAssistant : t.ai}</small>}</div>
+                    {message.safety && <span className="safety-badge">{t.safety}</span>}
+                    <MessageContent content={message.content} /></div>
+                </article>)}
+              </div>}
+              {pending && <div className="thinking" role="status"><Avatar philosopher={philosopher} /><span>{t.waiting}</span><i /><i /><i /></div>}
+              <div ref={lastMessage} />
+            </div>
+            <div className="composer-area">
+              {error && <div className="error" role="alert">{error}</div>}
+              {engine === "live" && <label className="consent"><input type="checkbox" checked={consent}
+                onChange={(event) => setConsent(event.target.checked)} disabled={pending} />{t.consent}</label>}
+              <form className="composer" onSubmit={(event) => { event.preventDefault(); void send(); }}>
+                <textarea ref={composer} aria-label={t.composer} value={draft} onChange={(event) => setDraft(event.target.value)}
+                  placeholder={t.composer} maxLength={4000} disabled={pending} rows={4}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                      event.preventDefault(); void send();
+                    }
+                  }} />
+                <div className="composer-bottom"><span>{partner.name}<span className="composer-dot">·</span> {language.toUpperCase()}</span>
+                  <button className="send" type="submit" disabled={pending || (engine === "live" && !consent) || !draft.trim()} aria-label={t.send}>↑</button></div>
+              </form>
+              <p className="privacy">{t.privacy}</p>
+            </div>
+          </section>
+
+        </div>}
+      </main>
+      <dialog ref={dialog} className="prompt-modal" aria-labelledby="prompt-title"
+        onCancel={() => setShowPrompt(false)} onClick={(event) => {
+          if (event.target === dialog.current) setShowPrompt(false);
+        }}>
+          <header><h2 id="prompt-title">{t.prompt} · {language.toUpperCase()}</h2>
+            <button onClick={() => setShowPrompt(false)} autoFocus>{t.close} ×</button></header>
+          <pre>{systemPrompt(language, philosopher)}</pre><small>{t.portaitNote}</small>
+      </dialog>
+    </div>
+  );
+}

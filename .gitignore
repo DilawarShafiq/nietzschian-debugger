@@ -22,6 +22,7 @@ env/
 # Environment
 .env
 .env.*
+!web/.env.example
 
 # OS
 .DS_Store
@@ -43,6 +44,7 @@ coverage/
 
 # Legacy (Node.js)
 node_modules/
+web/dist/
 
 # Local machine config (per-machine; contains absolute paths)
 .claude/settings.local.json
@@ -55,3 +57,4 @@ CLAUDE.md
 .claude/
 .specify/
 history/
+initiele-chatgpt-chat.md
