@@ -4,7 +4,7 @@ An educational Dutch/English reflection app for questioning assumptions and pote
 
 **[Open the web app on GitHub Pages](https://bartvanderwal.github.io/nietzschian-diagnoser/)** · [Run the web app locally](#webdemo-nietzschian-ai-clinician-fork-only) · [GreenPT VPS backend manual](web/BACKEND-HANDLEIDING.md)
 
-![Published GitHub Pages UI: Karl Popper in a Dutch scripted reflection conversation, with provider settings and token counters](assets/clinician-pages.png)
+![Published GitHub Pages UI: Karl Popper in a Dutch scripted reflection conversation, with connection settings, usage and examples collapsed](assets/clinician-pages.png)
 
 *Screenshot of the published GitHub Pages app in scripted demo mode. No live model calls or patient data. Karl Popper photograph: [LSE Library / Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Karl_Popper.jpg), via Flickr Commons (no known copyright restrictions); displayed with circular cropping.*
 
