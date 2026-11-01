@@ -6,7 +6,8 @@ import {
 
 export const chatSchema = z.strictObject({
   language: z.enum(["nl", "en"]),
-  philosopher: z.enum(["socrates", "nietzsche", "zarathustra"]),
+  philosopher: z.enum(["socrates", "nietzsche", "zarathustra", "popper"]),
+  provider: z.enum(["claude", "greenpt"]).default("claude"),
   fictionalCase: z.literal(true),
   apiKey: z.string().trim().min(10).max(300).optional(),
   messages: z.array(z.strictObject({
@@ -27,14 +28,14 @@ export type Completion = { text: string; usage: TokenUsage };
 export type Complete = (system: string, messages: ChatMessage[]) => Promise<Completion>;
 
 export class ResponseError extends Error {
-  constructor(public usage: TokenUsage, public claudeRequests: number) {
-    super("Claude response failed reflection constraints.");
+  constructor(public usage: TokenUsage, public providerRequests: number) {
+    super("Model response failed reflection constraints.");
   }
 }
 
 export class ProviderError extends Error {
-  constructor(public status: number | undefined, public usage: TokenUsage, public claudeRequests: number) {
-    super("Claude request failed.");
+  constructor(public status: number | undefined, public usage: TokenUsage, public providerRequests: number) {
+    super("Model request failed.");
   }
 }
 
@@ -49,21 +50,21 @@ export async function chat(
   messages: ChatMessage[],
   model: string,
   complete: Complete,
-): Promise<ChatResponse> {
+): Promise<Omit<ChatResponse, "provider">> {
   const system = systemPrompt(language, philosopher);
   const usage: TokenUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
-  let claudeRequests = 0;
+  let providerRequests = 0;
   let attemptMessages = messages;
 
   for (let attempt = 0; attempt < 2; attempt++) {
-    claudeRequests++;
+    providerRequests++;
     let result: Completion;
     try {
       result = await complete(system, attemptMessages);
     } catch (error) {
       const status = error instanceof Error && "status" in error && typeof error.status === "number"
         ? error.status : undefined;
-      throw new ProviderError(status, usage, claudeRequests);
+      throw new ProviderError(status, usage, providerRequests);
     }
     for (const key of ["input", "output", "cacheRead", "cacheWrite"] as const) usage[key] += result.usage[key];
     const text = result.text.trim();
@@ -71,7 +72,7 @@ export async function chat(
     const reply = safety ? text.slice("[SAFETY]".length).trim() : text;
     if (reply && (safety || isReflectiveResponse(reply))) {
       return {
-        reply, safety, usage, model, claudeRequests,
+        reply, safety, usage, model, providerRequests,
         estimatedInputTokens: estimateInputTokens(language, philosopher, messages),
       };
     }
@@ -86,5 +87,5 @@ export async function chat(
       },
     ];
   }
-  throw new ResponseError(usage, claudeRequests);
+  throw new ResponseError(usage, providerRequests);
 }

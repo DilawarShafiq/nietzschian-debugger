@@ -1,10 +1,11 @@
 import express from "express";
 import { rateLimit } from "express-rate-limit";
 import { chat, chatSchema, ProviderError, ResponseError, type Complete } from "./chat.js";
+import type { Provider } from "../shared/prompts.js";
 
-export type CompletionFactory = (apiKey?: string) => Complete | null;
+export type CompletionFactory = (apiKey: string | undefined, provider: Provider) => Complete | null;
 
-export function createApp(model: string, completionFactory: CompletionFactory, frontendOrigin?: string) {
+export function createApp(models: Record<Provider, string>, completionFactory: CompletionFactory, frontendOrigin?: string) {
   const app = express();
   app.disable("x-powered-by");
   app.use((_request, response, next) => {
@@ -50,30 +51,31 @@ export function createApp(model: string, completionFactory: CompletionFactory, f
       response.status(400).json({ error: "INVALID_REQUEST" });
       return;
     }
-    const complete = completionFactory(parsed.data.apiKey);
+    const { provider } = parsed.data;
+    const complete = completionFactory(parsed.data.apiKey, provider);
     if (!complete) {
-      console.warn("Chat unavailable: ANTHROPIC_API_KEY is not configured.");
+      console.warn("Chat unavailable: provider key is not configured.", { provider });
       response.status(503).json({ error: "MISSING_KEY" });
       return;
     }
     try {
       const { language, philosopher, messages } = parsed.data;
-      response.json(await chat(language, philosopher, messages, model, complete));
+      response.json({ ...await chat(language, philosopher, messages, models[provider], complete), provider });
     } catch (error) {
       if (error instanceof ResponseError) {
-        console.warn("Claude response rejected after retry.");
+        console.warn("Model response rejected after retry.", { provider });
         response.status(502).json({
-          error: "INVALID_RESPONSE", usage: error.usage, claudeRequests: error.claudeRequests,
+          error: "INVALID_RESPONSE", usage: error.usage, providerRequests: error.providerRequests,
         });
         return;
       }
       const status = error instanceof ProviderError ? error.status : undefined;
-      console.error("Claude request failed.", { status: typeof status === "number" ? status : "unknown" });
+      console.error("Model request failed.", { provider, status: typeof status === "number" ? status : "unknown" });
       const code = status === 401 || status === 403 ? "PROVIDER_AUTH"
         : status === 429 ? "PROVIDER_RATE_LIMIT" : "PROVIDER_UNAVAILABLE";
       response.status(status === 429 ? 429 : 502).json({
         error: code,
-        ...(error instanceof ProviderError ? { usage: error.usage, claudeRequests: error.claudeRequests } : {}),
+        ...(error instanceof ProviderError ? { usage: error.usage, providerRequests: error.providerRequests } : {}),
       });
     }
   });

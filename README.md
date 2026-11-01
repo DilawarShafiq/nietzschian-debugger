@@ -436,8 +436,15 @@ nietzschian debug "test problem"
 ## Webdemo: Nietzschian AI Clinician (fork only)
 
 The fork includes a React chat interface with Dutch/English UI and **two explicit
-system prompts**, combined with Socrates, Nietzsche, or Zarathustra mode instructions.
-Generated portraits change with the selected partner. You can inspect the active
+system prompts**, combined with Socrates, Nietzsche, Zarathustra, or Karl Popper mode instructions.
+This yields **eight assembled prompts**: four thinkers, each in Dutch and English.
+The selected instructions are actually sent to the model for each live turn; switching
+the thinker affects subsequent turns, not just the avatar. The demo has separate
+fixed answers for each thinker. Popper focuses on falsifiability, counterevidence,
+testable predictions, and distinguishing lack of refutation from proof.
+These are clinical-reflection adaptations, not copies of the Python debugger prompts.
+The three original partners have generated portraits; Popper has a symbolic SVG
+illustration. You can inspect the active
 prompt in the UI. This is an educational reflection demo, not a clinician, medical
 device, diagnostic system, or treatment recommender.
 
@@ -461,30 +468,37 @@ protocol or a claim of improved patient outcomes.
 
 Free text receives an explicit notice that no actual LLM integration is running.
 Demo conversation text stays in page memory; it is not sent to a backend. Demo
-answers have a separate counter: chatrequests, Claude calls, and actual tokens
+answers have a separate counter: chatrequests, model calls, and actual tokens
 remain zero. The token estimate is explicitly hypothetical in demo mode.
 
-Select **Live Claude** to use the backend locally, or with a configured separate
+Select **Live model** to use the backend locally, or with a configured separate
 backend. This option is unavailable on GitHub Pages without a backend URL.
-Then enter your Claude API key in the UI. It stays only in page memory
+Select **Claude** or **GreenPT** and enter that provider's key in the top connection
+panel. Switching provider clears the conversation and key to prevent accidentally
+sending them to another service. Keys stay only in page memory
 and is sent to the Express backend in the JSON body of `POST /api/chat`. It is not
 saved in browser storage or echoed in responses. Use only a backend you trust:
 its operator and browser scripts/extensions can access the key. Clearing the field
 or refreshing forgets it; that does not erase provider-side records. Never put keys
 in `VITE_` variables, source files, GitHub Pages builds, or URLs.
 
-Live mode uses the real Anthropic SDK, not canned demo responses. The default
-model is `claude-haiku-4-5-20251001`; override it with `CLAUDE_MODEL`. Calls may incur
+Live mode uses the real Anthropic SDK for Claude and an OpenAI-compatible SDK for
+GreenPT, not canned demo responses. The default Claude model is
+`claude-haiku-4-5-20251001`; override it with `CLAUDE_MODEL`. Calls may incur
 charges. Invalid keys, missing configuration, provider errors, and rate limits are
 shown explicitly. A response failing question/advice heuristics is retried once;
 this is not a clinical safety guarantee. No conversations are persisted by this app.
 Use fictional or de-identified practice cases only, and an approved provider.
 
-Counters show browser chat requests (including failures), Claude call attempts
-reported by the backend, and actual input/output/cache tokens returned by Claude.
+Counters show browser chat requests (including failures), model call attempts
+reported by the backend, and actual input/output/cache tokens returned by the provider.
+Usage is cumulative across providers for this page session. For GreenPT, cached
+prompt tokens (when reported) are separated from input to avoid double counting;
+cache-write counts are not exposed by this adapter. Missing provider usage fails
+explicitly instead of being reported as zero.
 Retry usage is included. Failed requests can have unknown usage. The next-input
 estimate uses characters divided by four plus message overhead, including the
-prompt and full conversation history; it is **not an exact Claude tokenizer**.
+prompt and full conversation history; it is **not an exact provider tokenizer**.
 Output is capped at 512 tokens per provider call. Conversation size is capped
 explicitly; it is never silently truncated. Counters reset on page reload, not on
 starting a new conversation. Static-asset requests and CORS preflights are excluded.
@@ -495,10 +509,36 @@ npm run build
 npm start
 ```
 
-Tests use an injected fake provider and never spend Claude credits. The server binds
+Markdown responses render as formatted text, lists, emphasis, code, and tables.
+Raw HTML is disabled, unsafe link protocols are filtered, and embedded remote images
+are not loaded. The composer uses larger text, a resizable multiline input, and
+page reflow rather than a fixed viewport height so browser zoom does not squeeze it.
+
+Tests use an injected fake provider and never spend model credits. The server binds
 to `127.0.0.1` by default, limits calls to 20 requests per IP per ten minutes, and
 does not log prompts or keys. This demo has **no authentication**: do not expose
 a paid server key publicly. CORS is not authentication or an abuse-prevention system.
+
+### GreenPT connection
+
+The [official quickstart](https://docs.greenpt.ai/get-started) documents an
+OpenAI-compatible EU base URL, `https://api.greenpt.ai/v1`. The backend calls
+`POST /chat/completions` with bearer authentication. Users cannot substitute a
+custom provider URL, preventing accidental key transmission to arbitrary endpoints.
+
+Configure a server-side key, or enter a temporary key in the top UI panel:
+
+```text
+GREENPT_API_KEY=your-key
+GREENPT_MODEL=mistral-small-3.2-24b-instruct-2506
+```
+
+The default is listed in the [official model catalogue](https://docs.greenpt.ai/models);
+check availability for your account before use and override `GREENPT_MODEL` as needed.
+Model selection is server-controlled. Do not assume a regional endpoint alone
+establishes clinical/privacy approval: review your organisation's provider agreements.
+The integration is tested with fake completions; a live GreenPT account/key is
+required to validate an actual completion.
 
 ### GitHub Pages: scripted demo without a server
 
@@ -516,7 +556,16 @@ Expected URL: <https://bartvanderwal.github.io/nietzschian-diagnoser/>.
 
 ### Optional: GitHub Pages frontend + separate Express backend
 
-GitHub Pages cannot run Express. Deploy the Node backend separately with HTTPS,
+GitHub Pages (like GitLab Pages) cannot run Express. The current app deliberately
+uses an Express backend for live providers. This is an architecture choice, not a
+universal CORS limitation: Claude's official SDK supports opt-in browser access
+with `dangerouslyAllowBrowser: true`, with increased exposure of the user's key.
+A no-key preflight from the Pages origin was allowed by Claude during testing;
+the equivalent GreenPT check returned 403 without CORS permission from the test
+environment, so direct-browser GreenPT support has not been verified. This app
+does not currently implement direct-browser provider calls.
+
+Deploy the Node backend separately with HTTPS,
 install dependencies with `npm ci`, build with `npm run build`, and run `npm start`
 from the web directory. Configure:
 
@@ -534,7 +583,7 @@ and same-origin clients receive browser access. Use HTTPS end-to-end. Configure
 your hosting proxy not to record request bodies, and add authentication and proper
 operator-managed quotas before a public/production deployment.
 
-To enable live Claude on Pages, set the fork's repository variable `CLINICIAN_API_URL` to the HTTPS
+To enable live providers on Pages, set the fork's repository variable `CLINICIAN_API_URL` to the HTTPS
 backend URL (no `/api/chat` suffix). In Settings > Pages select **GitHub Actions**,
 then manually run the **Clinician demo on GitHub Pages (fork only)** workflow from
 the feature branch. It publishes only `web/dist/client`, never server files or keys.

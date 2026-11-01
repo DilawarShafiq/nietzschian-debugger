@@ -11,7 +11,7 @@ const payload = {
 const usage = { input: 100, output: 25, cacheRead: 0, cacheWrite: 0 };
 
 async function withApp(factory: CompletionFactory, run: (url: string) => Promise<void>, origin?: string) {
-  const server = createApp("test-model", factory, origin).listen(0, "127.0.0.1");
+  const server = createApp({ claude: "test-model", greenpt: "green-test-model" }, factory, origin).listen(0, "127.0.0.1");
   await once(server, "listening");
   const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   try { await run(url); }
@@ -83,9 +83,33 @@ test("provider errors are sanitized with known usage and request counts", async 
       assert.equal(result.status, 502);
       const body = await result.json();
       assert.equal(body.error, "PROVIDER_AUTH");
-      assert.equal(body.claudeRequests, 1);
+      assert.equal(body.providerRequests, 1);
       assert.ok(!JSON.stringify(body).includes("sensitive"));
     });
+});
+
+test("GreenPT selection routes its key, model, and Popper prompt to the correct completion", async () => {
+  const key = "greenpt-test-key-not-real";
+  await withApp((value, provider) => {
+    assert.equal(provider, "greenpt");
+    assert.equal(value, key);
+    return async (system) => {
+      assert.match(system, /POPPER/);
+      assert.match(system, /weerleggen/);
+      return { text: "Welke waarneming kan je hypothese weerleggen?", usage };
+    };
+  }, async (url) => {
+    const response = await fetch(`${url}/api/chat`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...payload, provider: "greenpt", philosopher: "popper", apiKey: key }),
+    });
+    assert.equal(response.status, 200);
+    const result = await response.json();
+    assert.equal(result.provider, "greenpt");
+    assert.equal(result.model, "green-test-model");
+    assert.equal(result.providerRequests, 1);
+    assert.ok(!JSON.stringify(result).includes(key));
+  });
 });
 
 test("request limit blocks the twenty-first call before provider access", async () => {

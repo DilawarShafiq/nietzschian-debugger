@@ -7,7 +7,7 @@
     "dev": "tsx server/index.ts",
     "build": "tsc --noEmit && vite build && tsc -p tsconfig.server.json",
     "start": "node dist/server/server/index.js",
-    "test": "node --import tsx --test server/*.test.ts shared/*.test.ts",
+    "test": "node --import tsx --test server/*.test.ts shared/*.test.ts src/*.test.tsx",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -15,8 +15,11 @@
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
     "express-rate-limit": "^8.2.0",
+    "openai": "^6.0.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.0",
     "zod": "^4.1.0"
   },
   "devDependencies": {

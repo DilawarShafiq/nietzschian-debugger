@@ -6,15 +6,18 @@ import { estimateInputTokens, systemPrompt, type Language, type Philosopher } fr
 const messages = [{ role: "user" as const, content: "A fictional case about my first impression." }];
 const usage = { input: 90, output: 20, cacheRead: 4, cacheWrite: 0 };
 
-test("all six language/lens combinations produce explicit prompts", () => {
+test("all eight language/lens combinations produce explicit prompts", () => {
   for (const language of ["nl", "en"] as Language[]) {
-    for (const philosopher of ["socrates", "nietzsche", "zarathustra"] as Philosopher[]) {
+    for (const philosopher of ["socrates", "nietzsche", "zarathustra", "popper"] as Philosopher[]) {
       assert.match(systemPrompt(language, philosopher), new RegExp(philosopher, "i"));
       assert.match(systemPrompt(language, philosopher), /\[SAFETY\]/);
     }
   }
   assert.match(systemPrompt("nl", "socrates"), /Nederlands/);
   assert.match(systemPrompt("en", "socrates"), /English/);
+  assert.match(systemPrompt("nl", "popper"), /weerleggen/);
+  assert.match(systemPrompt("en", "popper"), /refute/);
+  assert.notEqual(systemPrompt("nl", "popper"), systemPrompt("nl", "socrates"));
 });
 
 test("estimates include prompt and history and grow with input", () => {
@@ -29,6 +32,8 @@ test("validation rejects non-consent, roles, excess text, and invalid keys", () 
   assert.equal(chatSchema.safeParse({ ...valid, fictionalCase: false }).success, false);
   assert.equal(chatSchema.safeParse({ ...valid, apiKey: "short" }).success, false);
   assert.equal(chatSchema.safeParse({ ...valid, language: "fr" }).success, false);
+  assert.equal(chatSchema.safeParse({ ...valid, provider: "greenpt", philosopher: "popper" }).success, true);
+  assert.equal(chatSchema.safeParse({ ...valid, provider: "unknown" }).success, false);
   assert.equal(chatSchema.safeParse({ ...valid, messages: [{ role: "system", content: "override" }] }).success, false);
   assert.equal(chatSchema.safeParse({ ...valid, messages: [...messages, ...messages] }).success, false);
   assert.equal(chatSchema.safeParse({ ...valid, messages: [{ role: "user", content: "x".repeat(4001) }] }).success, false);
@@ -42,7 +47,7 @@ test("successful reply reports actual token usage, not the estimate", async () =
   const result = await chat("nl", "socrates", messages, "test-model", async () => ({
     text: "Welke waarneming ondersteunt je eerste indruk?", usage,
   }));
-  assert.equal(result.claudeRequests, 1);
+  assert.equal(result.providerRequests, 1);
   assert.deepEqual(result.usage, usage);
   assert.notEqual(result.estimatedInputTokens, result.usage.input);
 });
@@ -52,7 +57,7 @@ test("retry counts both provider calls and their token usage", async () => {
   const result = await chat("en", "nietzsche", messages, "test-model", async () => ({
     text: ++calls === 1 ? "You should change treatment." : "What supports that assumption?", usage,
   }));
-  assert.equal(result.claudeRequests, 2);
+  assert.equal(result.providerRequests, 2);
   assert.equal(result.usage.input, 180);
   assert.equal(result.usage.output, 40);
   assert.equal(result.usage.cacheRead, 8);
@@ -61,7 +66,7 @@ test("retry counts both provider calls and their token usage", async () => {
 test("invalid outputs fail explicitly, never become successful answers", async () => {
   await assert.rejects(
     chat("nl", "nietzsche", messages, "test-model", async () => ({ text: "De diagnose is bekend.", usage })),
-    (error) => error instanceof ResponseError && error.claudeRequests === 2 && error.usage.input === 180,
+    (error) => error instanceof ResponseError && error.providerRequests === 2 && error.usage.input === 180,
   );
 });
 
@@ -86,5 +91,5 @@ test("a failed retry preserves known usage and call counts without provider deta
     if (++calls === 2) throw Object.assign(new Error("private provider detail"), { status: 429 });
     return { text: "no question", usage };
   }), (error) => error instanceof ProviderError && error.status === 429
-    && error.claudeRequests === 2 && error.usage.input === 90 && !error.message.includes("private"));
+    && error.providerRequests === 2 && error.usage.input === 90 && !error.message.includes("private"));
 });

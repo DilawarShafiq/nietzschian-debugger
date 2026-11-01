@@ -7,7 +7,7 @@ test("every demo option has a single reflection question in both languages for e
   for (const topic of Object.keys(demoQuestions) as DemoTopic[]) {
     for (const language of ["nl", "en"] as Language[]) {
       assert.ok(demoQuestions[topic].label[language].length > 10);
-      for (const philosopher of ["socrates", "nietzsche", "zarathustra"] as Philosopher[]) {
+      for (const philosopher of ["socrates", "nietzsche", "zarathustra", "popper"] as Philosopher[]) {
         const reply = demoReply(topic, language, philosopher);
         assert.equal(reply.split("?").length, 2);
         assert.equal(reply, demoReply(topic, language, philosopher));

@@ -1,23 +1,30 @@
 import { useEffect, useRef, useState } from "react";
 import {
   estimateInputTokens, systemPrompt,
+  providerNames, type Provider,
   type ChatMessage, type ChatResponse, type ChatError, type Language, type Philosopher, type TokenUsage,
 } from "../shared/prompts.js";
 import { errors, partners, translations } from "./i18n.js";
 import { demoQuestions, demoReply, initialDemoTopics, type DemoTopic } from "../shared/demo.js";
+import { MessageContent } from "./MessageContent.js";
 
 type DisplayMessage = ChatMessage & { philosopher?: Philosopher; safety?: boolean; demo?: boolean };
 const apiBase = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 const avatarUrl = `${import.meta.env.BASE_URL}philosophers.png`;
 const initialUsage: TokenUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
-const liveAvailable = Boolean(apiBase) || ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname);
+const liveAvailable = Boolean(apiBase) || import.meta.env.DEV
+  || ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname);
 
 function Avatar({ philosopher, large = false }: { philosopher: Philosopher; large?: boolean }) {
   return <span
     className={`avatar ${large ? "avatar-large" : ""}`}
     role="img"
     aria-label={partners[philosopher].name}
-    style={{ backgroundImage: `url("${avatarUrl}")`, backgroundPosition: `${partners[philosopher].position} 30%` }}
+    style={{
+      backgroundImage: `url("${philosopher === "popper" ? `${import.meta.env.BASE_URL}popper.svg` : avatarUrl}")`,
+      backgroundSize: philosopher === "popper" ? "cover" : "300% auto",
+      backgroundPosition: `${partners[philosopher].position} 30%`,
+    }}
   />;
 }
 
@@ -27,6 +34,7 @@ export function App() {
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [apiKey, setApiKey] = useState("");
+  const [provider, setProvider] = useState<Provider>("claude");
   const [consent, setConsent] = useState(false);
   const [engine, setEngine] = useState<"demo" | "live">("demo");
   const [demoTopics, setDemoTopics] = useState<DemoTopic[]>(initialDemoTopics);
@@ -34,7 +42,7 @@ export function App() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [requests, setRequests] = useState(0);
-  const [claudeRequests, setClaudeRequests] = useState(0);
+  const [providerRequests, setProviderRequests] = useState(0);
   const [usage, setUsage] = useState<TokenUsage>(initialUsage);
   const [model, setModel] = useState("Claude");
   const [showPrompt, setShowPrompt] = useState(false);
@@ -68,7 +76,7 @@ export function App() {
         cacheRead: previous.cacheRead + value.cacheRead, cacheWrite: previous.cacheWrite + value.cacheWrite,
       }));
     }
-    setClaudeRequests((previous) => previous + calls);
+    setProviderRequests((previous) => previous + calls);
   }
 
   async function send(topic?: DemoTopic) {
@@ -106,20 +114,20 @@ export function App() {
         headers: { "Content-Type": "application/json" },
         signal: AbortSignal.timeout(100000),
         body: JSON.stringify({
-          language, philosopher, messages: submittedMessages, fictionalCase: true,
+          language, philosopher, provider, messages: submittedMessages, fictionalCase: true,
           ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
         }),
       });
       if (!response.ok) {
         const failure: ChatError = await response.json();
-        addUsage(failure.usage, failure.claudeRequests);
+        addUsage(failure.usage, failure.providerRequests);
         throw new Error(errors[language][failure.error] || errors[language].PROVIDER_UNAVAILABLE);
       }
       const result: ChatResponse = await response.json();
       if (!result.reply || !result.usage || !Number.isFinite(result.usage.input)) {
         throw new Error(errors[language].PROVIDER_UNAVAILABLE);
       }
-      addUsage(result.usage, result.claudeRequests);
+      addUsage(result.usage, result.providerRequests);
       setModel(result.model);
       setMessages((previous) => [
         ...previous, { role: "assistant", content: result.reply, philosopher, safety: result.safety },
@@ -150,6 +158,13 @@ export function App() {
     setDemoTopics(initialDemoTopics); setApiKey(""); setConsent(false);
   }
 
+  function switchProvider(value: Provider) {
+    if (pending || value === provider) return;
+    if (messages.length && !window.confirm(t.switchProvider)) return;
+    setProvider(value); setMessages([]); setDraft(""); setError(null);
+    setApiKey(""); setConsent(false); setModel(providerNames[value]);
+  }
+
   return (
     <div className="app">
       <aside className="sidebar">
@@ -178,22 +193,33 @@ export function App() {
             {(["nl", "en"] as Language[]).map((value) => <button key={value} aria-pressed={language === value}
               disabled={pending} onClick={() => { setLanguage(value); setError(null); }}>{value.toUpperCase()}</button>)}
           </div></div>
-          {engine === "live" ? <>
-          <label className="key-label" htmlFor="api-key">{t.keyTitle} <span aria-hidden="true">⌑</span></label>
-          <input id="api-key" type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)}
-            placeholder={t.keyPlaceholder} autoComplete="off" spellCheck={false} disabled={pending} maxLength={300} />
-          <small className="key-help">{t.keyHelp}</small>
-          {apiKey && <button className="text-button" disabled={pending} onClick={() => setApiKey("")}>{t.keyClear}</button>}
-          <div className="backend-label" title={apiBase || window.location.origin}>{t.backend}: {apiBase ? new URL(apiBase).host : window.location.host}</div>
-          </> : <small className="key-help demo-sidebar-help">{liveAvailable ? t.demoPrivacy : t.liveUnavailable}</small>}
+          {engine === "demo" && <small className="key-help demo-sidebar-help">{liveAvailable ? t.demoPrivacy : t.liveUnavailable}</small>}
         </div>
       </aside>
 
       <main className="main">
         <header className="topbar">
           <div><h1>{t.title}</h1><p>{t.subtitle}</p></div>
-          <span className="model-badge"><span />{engine === "demo" ? t.demo : model}</span>
+          <span className="model-badge"><span />{engine === "demo" ? t.demo : `${providerNames[provider]} · ${model}`}</span>
         </header>
+        <section className="connection-panel" aria-label={t.provider}>
+          <div className="connection-fields">
+            <label htmlFor="provider">{t.provider}
+              <select id="provider" value={provider} disabled={pending}
+                onChange={(event) => switchProvider(event.target.value === "greenpt" ? "greenpt" : "claude")}>
+                <option value="claude">Claude (Anthropic)</option><option value="greenpt">GreenPT (EU)</option>
+              </select>
+            </label>
+            <label htmlFor="api-key">{providerNames[provider]} {t.keyTitle}
+              <input id="api-key" type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)}
+                placeholder={provider === "claude" ? t.keyPlaceholder : "sk-…"} autoComplete="off"
+                spellCheck={false} disabled={pending || engine === "demo"} maxLength={300} />
+            </label>
+            {apiKey && <button className="clear-key" disabled={pending} onClick={() => setApiKey("")}>{t.keyClear}</button>}
+          </div>
+          <p>{engine === "demo" ? t.demoNotice : t.keyHelp} {provider === "greenpt" && t.providerHelp}</p>
+          {engine === "live" && <small title={apiBase || window.location.origin}>{t.backend}: {apiBase ? new URL(apiBase).host : window.location.host}</small>}
+        </section>
         <div className="chat-layout">
           <section className="conversation" aria-label={t.newChat}>
             <div className="chat-scroll">
@@ -212,7 +238,7 @@ export function App() {
                   <div><div className="message-name">{message.role === "user" ? t.you : partners[message.philosopher || philosopher].name}
                     {message.role === "assistant" && <small>{message.demo ? t.demoAssistant : t.ai}</small>}</div>
                     {message.safety && <span className="safety-badge">{t.safety}</span>}
-                    <p>{message.content}</p></div>
+                    <MessageContent content={message.content} /></div>
                 </article>)}
               </div>}
               {engine === "demo" && <div className="demo-options" aria-label={t.demoChoices}>
@@ -233,7 +259,7 @@ export function App() {
                 onChange={(event) => setConsent(event.target.checked)} disabled={pending} />{t.consent}</label>}
               <form className="composer" onSubmit={(event) => { event.preventDefault(); void send(); }}>
                 <textarea ref={composer} aria-label={t.composer} value={draft} onChange={(event) => setDraft(event.target.value)}
-                  placeholder={t.composer} maxLength={4000} disabled={pending} rows={2}
+                  placeholder={t.composer} maxLength={4000} disabled={pending} rows={4}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
                       event.preventDefault(); void send();
@@ -249,7 +275,7 @@ export function App() {
           <aside className="metrics" aria-label={t.stats}>
             <span className="sidebar-label">{t.stats}</span>
             <div className="request-metric"><span>{t.requestLabel}</span><strong>{format(requests).padStart(2, "0")}</strong></div>
-            <div className="metric-line"><span>{t.claudeLabel}</span><strong>{format(claudeRequests)}</strong></div>
+            <div className="metric-line"><span>{t.providerLabel}</span><strong>{format(providerRequests)}</strong></div>
             <div className="metric-line"><span>{t.demoTurns}</span><strong>{format(demoTurns)}</strong></div>
             <div className="metric-divider" />
             <h3>{t.tokens}<span>↗</span></h3>
