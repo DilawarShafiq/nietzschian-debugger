@@ -527,6 +527,8 @@ npm start
 ```
 
 Markdown responses render as formatted text, lists, emphasis, code, and tables.
+The chat-first layout keeps four partners, language selection, Demo/Live and a spacious composer visible. Connection settings and token counters are collapsed under **Connection** and **Usage**; background information, the system prompt and attribution remain accessible under **About this demo** and **About & sources**. Examples start expanded and collapse after the first message.
+Live chat is hidden until you explicitly validate the connection (button or Enter in the key field). Validation checks authentication and configured model availability through the provider's models API, without a paid test completion. Editing or clearing a key, or switching provider/route/engine, invalidates that check. Backend mode validates the server's provider key using authenticated `POST /api/validate`. Successful validation is not a guarantee of future quota or completion permissions; those errors remain explicit.
 Raw HTML is disabled, unsafe link protocols are filtered, and embedded remote images
 are not loaded. The composer uses larger text, a resizable multiline input, and
 page reflow rather than a fixed viewport height so browser zoom does not squeeze it.

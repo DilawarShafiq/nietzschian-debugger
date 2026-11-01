@@ -197,3 +197,36 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
   .message p { font-size: 1rem; }
   .privacy { font-size: .8125rem; }
 }
+
+summary { cursor: pointer; font-size: .875rem; padding: 10px 0; }
+summary:focus-visible { outline: 2px solid #9cbcad; outline-offset: 3px; }
+.topbar { align-items: center; }
+.engine-toggle { border: 1px solid #dce3d6; border-radius: 20px; padding: 7px 14px; background: #f2f5ef; color: #536649; font: inherit; font-size: .875rem; }
+.utility-panels { padding: 0 36px; display: flex; flex-wrap: wrap; gap: 8px 24px; border-bottom: 1px solid #e5eadd; }
+.utility-panels > details { flex: 1; min-width: 0; }
+.utility-panels .connection-panel { padding: 0; border: 0; background: transparent; }
+.utility-panels details[open] { flex-basis: 100%; padding-bottom: 18px; }
+.utility-panels .metrics { display: block; width: 100%; max-width: 540px; padding: 10px 0; border: 0; background: transparent; }
+.usage-panel .metrics h3, .usage-panel .metrics .metric-help { display: block; }
+.usage-panel .metric-line { margin: 12px 0; font-size: .875rem; }
+.usage-panel .estimate { display: block; margin: 15px 0; }
+.usage-panel .estimate strong { display: block; margin: 8px 0; font-size: 24px; }
+.settings { display: block; }
+.about-panel, .sources-panel { color: #bbcabf; font-size: .8125rem; line-height: 1.7; }
+.about-panel p { margin: 8px 0; }
+.about-panel .prompt-button { color: #eef3ed; margin: 12px 0; padding: 8px 0; border: 0; font-size: .8125rem; }
+.demo-status { text-align: center; color: #7d8d73; font-size: .8125rem; margin: 0 0 20px; }
+.demo-options { max-width: 720px; margin: 18px auto; }
+.demo-options > summary { color: #65785a; text-align: center; }
+.demo-options .suggestions { margin-top: 12px; }
+.chat-layout { flex: 1; }
+.connection-gate { padding: 60px 24px; text-align: center; color: #65785a; line-height: 1.7; }
+.conversation { min-height: 0; }
+.composer-area { width: 100%; margin: auto auto 0; }
+@media (max-width: 680px) {
+  .utility-panels { padding: 0 18px; }
+  .settings { padding-top: 12px; }
+  .language-row { display: flex; margin-bottom: 8px; }
+  .language-toggle { margin-top: 0; }
+  .topbar h1 { font-size: 1rem; }
+}

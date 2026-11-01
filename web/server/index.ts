@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { createApp } from "./app.js";
 import { completion } from "./providers.js";
 import type { Provider } from "../shared/prompts.js";
+import { validateProvider } from "../shared/validate-provider.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const production = here.includes(`${path.sep}dist${path.sep}server${path.sep}`);
@@ -34,7 +35,11 @@ const app = createApp(models, (userKey, provider) => {
   const key = userKey || (!frontendOrigin || process.env.ALLOW_SERVER_KEY === "true" ? keys[provider] : undefined);
   if (!key) return null;
   return completion(provider, key, models[provider]);
-}, frontendOrigin, accessToken);
+}, frontendOrigin, accessToken, async (userKey, provider) => {
+  const key = userKey || (!frontendOrigin || process.env.ALLOW_SERVER_KEY === "true" ? keys[provider] : undefined);
+  if (!key) throw new Error("MISSING_KEY");
+  return validateProvider(provider, key, models[provider]);
+});
 
 if (process.env.API_ONLY === "true") {
   app.use((_request, response) => response.sendStatus(404));

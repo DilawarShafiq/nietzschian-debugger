@@ -6,7 +6,8 @@ import {
 } from "../shared/prompts.js";
 import { browserChat, browserChatError } from "../shared/browser-chat.js";
 import { DEFAULT_MODELS, PROVIDER_ENDPOINTS } from "../shared/providers.js";
-import { backendChat, backendOrigin, BackendChatError } from "../shared/backend-chat.js";
+import { backendChat, backendOrigin, BackendChatError, validateBackend } from "../shared/backend-chat.js";
+import { validateProvider } from "../shared/validate-provider.js";
 import { errors, partners, translations } from "./i18n.js";
 import { demoQuestions, demoReply, initialDemoTopics, type DemoTopic } from "../shared/demo.js";
 import { MessageContent } from "./MessageContent.js";
@@ -40,6 +41,9 @@ export function App() {
   const [greenptRoute, setGreenptRoute] = useState<"direct" | "backend">(configuredBackend ? "backend" : "direct");
   const [backendToken, setBackendToken] = useState("");
   const [consent, setConsent] = useState(false);
+  const [validated, setValidated] = useState(false);
+  const [validating, setValidating] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const [engine, setEngine] = useState<"demo" | "live">("demo");
   const [demoTopics, setDemoTopics] = useState<DemoTopic[]>(initialDemoTopics);
   const [demoTurns, setDemoTurns] = useState(0);
@@ -53,7 +57,9 @@ export function App() {
   const dialog = useRef<HTMLDialogElement>(null);
   const lastMessage = useRef<HTMLDivElement>(null);
   const composer = useRef<HTMLTextAreaElement>(null);
+  const connectionPanel = useRef<HTMLDetailsElement>(null);
   const locked = useRef(false);
+  const validationLocked = useRef(false);
   const t = translations[language];
   const partner = partners[philosopher];
   const viaBackend = provider === "greenpt" && greenptRoute === "backend";
@@ -81,12 +87,38 @@ export function App() {
         cacheRead: previous.cacheRead + value.cacheRead, cacheWrite: previous.cacheWrite + value.cacheWrite,
       }));
     }
+
     setProviderRequests((previous) => previous + calls);
   }
 
+  function invalidateConnection() {
+      setValidated(false); setConnectionError(null);
+    }
+
+    async function validateKey() {
+      if (validationLocked.current || pending) return;
+      if (!(viaBackend ? backendToken.trim() : apiKey.trim())) {
+        setConnectionError(errors[language][viaBackend ? "BACKEND_AUTH" : "MISSING_KEY"]); return;
+      }
+      validationLocked.current = true;
+      setValidating(true); setValidated(false); setConnectionError(null);
+      try {
+        const selectedModel = viaBackend
+          ? await validateBackend(configuredBackend, backendToken, provider)
+          : await validateProvider(provider, apiKey.trim(), DEFAULT_MODELS[provider], fetch, true);
+        setModel(selectedModel); setValidated(true);
+        if (connectionPanel.current) connectionPanel.current.open = false;
+      } catch (error) {
+        const failure = error instanceof BackendChatError ? error.failure : browserChatError(error);
+        console.warn("Connection validation failed.", { provider, code: failure.error });
+        setConnectionError(errors[language][failure.error]);
+      } finally {
+        validationLocked.current = false; setValidating(false);
+      }
+    }
   async function send(topic?: DemoTopic) {
     const submitted = topic ? demoQuestions[topic].label[language] : draft.trim();
-    if (locked.current || (engine === "live" && !consent) || !submitted) return;
+    if (locked.current || (engine === "live" && (!consent || !validated)) || !submitted) return;
     const submittedMessages: ChatMessage[] = [
       ...messages.map(({ role, content }) => ({ role, content })),
       { role: "user", content: submitted },
@@ -107,6 +139,7 @@ export function App() {
       return;
     }
     if (viaBackend ? !backendToken.trim() : !apiKey.trim()) {
+      if (connectionPanel.current) connectionPanel.current.open = true;
       setError(errors[language][viaBackend ? "BACKEND_AUTH" : "MISSING_KEY"]); return;
     }
     locked.current = true;
@@ -133,6 +166,10 @@ export function App() {
       console.warn("Provider request failed.", { provider, viaBackend, code: failure.error });
       addUsage(failure.usage, failure.providerRequests);
       setError(errors[language][failure.error]);
+      if (["PROVIDER_AUTH", "PROVIDER_FORBIDDEN", "BACKEND_AUTH"].includes(failure.error)) {
+        setValidated(false); setConnectionError(errors[language][failure.error]);
+        if (connectionPanel.current) connectionPanel.current.open = true;
+      }
       setMessages((previous) => previous.slice(0, -1));
       setDraft(submitted);
     } finally {
@@ -143,30 +180,34 @@ export function App() {
   }
 
   function newChat() {
-    if (pending || (messages.length && !window.confirm(t.reset))) return;
+    if (pending || validating || (messages.length && !window.confirm(t.reset))) return;
     setMessages([]); setDraft(""); setError(null); composer.current?.focus();
     setDemoTopics(initialDemoTopics);
   }
 
   function switchEngine(value: "demo" | "live") {
-    if (pending || value === engine) return;
+    if (pending || validating || value === engine) return;
     if (messages.length && !window.confirm(t.switchEngine)) return;
     setEngine(value); setMessages([]); setDraft(""); setError(null);
+    if (connectionPanel.current) connectionPanel.current.open = value === "live";
     setDemoTopics(initialDemoTopics); setApiKey(""); setBackendToken(""); setConsent(false);
+    invalidateConnection();
   }
 
   function switchProvider(value: Provider) {
-    if (pending || value === provider) return;
+    if (pending || validating || value === provider) return;
     if (messages.length && !window.confirm(t.switchProvider)) return;
     setProvider(value); setMessages([]); setDraft(""); setError(null);
     setApiKey(""); setBackendToken(""); setConsent(false); setModel(DEFAULT_MODELS[value]);
+    invalidateConnection();
   }
 
   function switchRoute(value: "direct" | "backend") {
-    if (pending || value === greenptRoute) return;
+    if (pending || validating || value === greenptRoute) return;
     if (messages.length && !window.confirm(t.switchProvider)) return;
     setGreenptRoute(value); setMessages([]); setDraft(""); setError(null);
     setApiKey(""); setBackendToken(""); setConsent(false); setModel(DEFAULT_MODELS.greenpt);
+    invalidateConnection();
   }
 
   return (
@@ -185,19 +226,21 @@ export function App() {
             </button>
           ))}
         </nav>
-        <div className="sidebar-note"><span>↗</span><p>{t.tagline}</p><small>{t.introduction}</small></div>
         <div className="settings">
-          <label className="key-label" htmlFor="chat-engine">{t.chatEngine}</label>
-          <select id="chat-engine" value={engine} disabled={pending}
-            onChange={(event) => switchEngine(event.target.value === "live" ? "live" : "demo")}>
-            <option value="demo">{t.demo}</option>
-            <option value="live">{t.live}</option>
-          </select>
           <div className="language-row"><span>{t.language}</span><div className="language-toggle" aria-label={t.language}>
             {(["nl", "en"] as Language[]).map((value) => <button key={value} aria-pressed={language === value}
               disabled={pending} onClick={() => { setLanguage(value); setError(null); }}>{value.toUpperCase()}</button>)}
           </div></div>
-          {engine === "demo" && <small className="key-help demo-sidebar-help">{t.demoPrivacy}</small>}
+          <details className="about-panel">
+            <summary>{t.about}</summary>
+            <p>{t.subtitle}</p>
+            <p>{t.introduction}</p>
+            <p>{t.demoHelp}</p>
+            <p>{engine === "demo" ? t.demoPrivacy : viaBackend ? t.backendHelp : t.privacyDetail}</p>
+            <button className="prompt-button" onClick={() => setShowPrompt(true)}>{t.prompt} ↗</button>
+          </details>
+          <details className="sources-panel">
+            <summary>{t.sources}</summary>
           <div className="attribution">
             <p>{t.upstreamCredit} <a href="https://github.com/DilawarShafiq/nietzschian-debugger"
               target="_blank" rel="noopener noreferrer">Nietzschian Debugger · Dilawar Shafiq</a> (MIT).</p>
@@ -209,57 +252,88 @@ export function App() {
               {" · "}<a href="https://upload.wikimedia.org/wikipedia/commons/4/43/Karl_Popper.jpg"
                 target="_blank" rel="noopener noreferrer">{t.originalPhoto}</a></p>
           </div>
+          </details>
         </div>
       </aside>
 
       <main className="main">
         <header className="topbar">
-          <div><h1>{t.title}</h1><p>{t.subtitle}</p></div>
-          <span className="model-badge"><span />{engine === "demo" ? t.demo : `${providerNames[provider]} · ${model}`}</span>
+          <h1>{t.title}</h1>
+          <select className="engine-toggle" id="chat-engine" aria-label={t.chatEngine}
+            value={engine} disabled={pending}
+            onChange={(event) => switchEngine(event.target.value === "live" ? "live" : "demo")}>
+            <option value="demo">Demo</option><option value="live">Live</option>
+          </select>
         </header>
-        <section className="connection-panel" aria-label={t.provider}>
+        <div className="utility-panels">
+        <details ref={connectionPanel} className="connection-panel">
+          <summary>{t.connection}{engine === "live" ? ` · ${providerNames[provider]}` : ""}</summary>
           <div className="connection-fields">
             <label htmlFor="provider">{t.provider}
-              <select id="provider" value={provider} disabled={pending}
+              <select id="provider" value={provider} disabled={pending || validating}
                 onChange={(event) => switchProvider(event.target.value === "greenpt" ? "greenpt" : "claude")}>
                 <option value="claude">Claude (Anthropic)</option><option value="greenpt">GreenPT (EU)</option>
               </select>
             </label>
             {provider === "greenpt" && configuredBackend && <label htmlFor="greenpt-route">{t.route}
-              <select id="greenpt-route" value={greenptRoute} disabled={pending}
+              <select id="greenpt-route" value={greenptRoute} disabled={pending || validating}
                 onChange={(event) => switchRoute(event.target.value === "backend" ? "backend" : "direct")}>
                 <option value="direct">{t.directRoute}</option><option value="backend">{t.backendRoute}</option>
               </select>
             </label>}
             {viaBackend ? <label htmlFor="backend-token">{t.backendToken}
               <input id="backend-token" type="password" value={backendToken}
-                onChange={(event) => setBackendToken(event.target.value)} autoComplete="off"
-                spellCheck={false} disabled={pending || engine === "demo"} maxLength={300} />
+                onChange={(event) => { setBackendToken(event.target.value); invalidateConnection(); }} autoComplete="off"
+                onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void validateKey(); } }}
+                spellCheck={false} disabled={pending || validating || engine === "demo"} maxLength={300} />
             </label> : <label htmlFor="api-key">{providerNames[provider]} {t.keyTitle}
-              <input id="api-key" type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)}
+              <input id="api-key" type="password" value={apiKey}
+                onChange={(event) => { setApiKey(event.target.value); invalidateConnection(); }}
+                onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void validateKey(); } }}
                 placeholder={provider === "claude" ? t.keyPlaceholder : "sk-…"} autoComplete="off"
-                spellCheck={false} disabled={pending || engine === "demo"} maxLength={300} />
+                spellCheck={false} disabled={pending || validating || engine === "demo"} maxLength={300} />
             </label>}
-            {(apiKey || backendToken) && <button className="clear-key" disabled={pending}
-              onClick={() => { setApiKey(""); setBackendToken(""); }}>{t.keyClear}</button>}
+            {engine === "live" && <button className="clear-key" disabled={pending || validating}
+              onClick={() => void validateKey()}>{validating ? t.validating : t.validateKey}</button>}
+            {(apiKey || backendToken) && <button className="clear-key" disabled={pending || validating}
+              onClick={() => { setApiKey(""); setBackendToken(""); invalidateConnection(); }}>{t.keyClear}</button>}
           </div>
+          {connectionError && <p className="error" role="alert">{connectionError}</p>}
+          {validated && <p role="status">{t.validated}</p>}
           <p>{engine === "demo" ? t.demoNotice : viaBackend ? t.backendHelp : t.keyHelp}
             {provider === "greenpt" && !viaBackend && t.providerHelp}</p>
           {engine === "live" && <small>{viaBackend ? t.backendRoute : t.endpoint}: {viaBackend
             ? `${configuredBackend}/api/chat` : PROVIDER_ENDPOINTS[provider]} · {!viaBackend && DEFAULT_MODELS[provider]}</small>}
-        </section>
-        <div className="chat-layout">
+        </details>
+        <details className="usage-panel">
+          <summary>{t.usage}</summary>
+          <aside className="metrics" aria-label={t.stats}>
+            <h3>{t.stats}</h3>
+            <div className="metric-line"><span>{t.requestLabel}</span><strong>{format(requests)}</strong></div>
+            <div className="metric-line"><span>{t.providerLabel}</span><strong>{format(providerRequests)}</strong></div>
+            <div className="metric-line"><span>{t.demoTurns}</span><strong>{format(demoTurns)}</strong></div>
+            <h3>{t.tokens} · {model}</h3>
+            <div className="metric-line"><span>{t.input}</span><strong>{format(usage.input)}</strong></div>
+            <div className="metric-line"><span>{t.output}</span><strong>{format(usage.output)}</strong></div>
+            <div className="metric-line"><span>{t.cache}</span><strong>{format(usage.cacheRead)} / {format(usage.cacheWrite)}</strong></div>
+            <p className="metric-help">{engine === "demo" ? t.demoTokens : t.actualHelp}</p>
+            <div className="estimate"><span>{engine === "demo" ? t.hypothetical : t.estimated}</span><strong>≈ {format(estimate)}</strong><small>tokens</small></div>
+            <p className="metric-help">{t.estimateHelp}</p>
+            <p className="metric-help">{t.estimatedOutput}</p>
+          </aside>
+        </details>
+        </div>
+        {engine === "live" && !validated ? <div className="connection-gate">
+          <p role="status">{validating ? t.validating : t.validationRequired}</p>
+          <button className="clear-key" onClick={() => { if (connectionPanel.current) connectionPanel.current.open = true; }}>{t.connection}</button>
+        </div> : <div className="chat-layout">
           <section className="conversation" aria-label={t.newChat}>
             <div className="chat-scroll">
-              {engine === "demo" && <div className="demo-banner" role="note"><strong>{t.demoNotice}</strong><p>{t.demoHelp}</p></div>}
+              {engine === "demo" && <p className="demo-status" role="note">{t.demoNotice}</p>}
               {messages.length === 0 ? <div className="welcome">
                 <div className="portrait-ring"><Avatar philosopher={philosopher} large /></div>
                 <span className="eyebrow">{partner.name} · {partner.description[language]}</span>
                 <h2>{t.welcome}</h2><p>{t.welcomeBody}</p>
-                {engine === "live" && <div className="suggestions">{t.suggestions.map((suggestion, index) => <button key={suggestion}
-                  onClick={() => { setDraft(suggestion); composer.current?.focus(); }} disabled={pending}>
-                  <span className="suggestion-number">0{index + 1}</span><span>{suggestion}</span><span>↗</span>
-                </button>)}</div>}
               </div> : <div className="messages" role="log" aria-live="polite" aria-relevant="additions">
                 {messages.map((message, index) => <article key={index} className={`message ${message.role}`}>
                   {message.role === "assistant" ? <Avatar philosopher={message.philosopher || philosopher} /> : <span className="user-avatar">↗</span>}
@@ -269,15 +343,18 @@ export function App() {
                     <MessageContent content={message.content} /></div>
                 </article>)}
               </div>}
-              {engine === "demo" && <div className="demo-options" aria-label={t.demoChoices}>
-                <span>{t.demoChoices}</span>
-                <div className="suggestions">{demoTopics.map((topic, index) => (
+              <details key={`${engine}-${messages.length === 0}`} className="demo-options" open={messages.length === 0}>
+                <summary>{t.examples}</summary>
+                <div className="suggestions">{engine === "demo" ? demoTopics.map((topic, index) => (
                   <button key={topic} onClick={() => void send(topic)}>
                     <span className="suggestion-number">0{index + 1}</span>
                     <span>{demoQuestions[topic].label[language]}</span><span>↗</span>
                   </button>
-                ))}</div>
-              </div>}
+                )) : t.suggestions.map((suggestion, index) => <button key={suggestion}
+                  onClick={() => { setDraft(suggestion); composer.current?.focus(); }} disabled={pending}>
+                  <span className="suggestion-number">0{index + 1}</span><span>{suggestion}</span><span>↗</span>
+                </button>)}</div>
+              </details>
               {pending && <div className="thinking" role="status"><Avatar philosopher={philosopher} /><span>{t.waiting}</span><i /><i /><i /></div>}
               <div ref={lastMessage} />
             </div>
@@ -300,24 +377,7 @@ export function App() {
             </div>
           </section>
 
-          <aside className="metrics" aria-label={t.stats}>
-            <span className="sidebar-label">{t.stats}</span>
-            <div className="request-metric"><span>{t.requestLabel}</span><strong>{format(requests).padStart(2, "0")}</strong></div>
-            <div className="metric-line"><span>{t.providerLabel}</span><strong>{format(providerRequests)}</strong></div>
-            <div className="metric-line"><span>{t.demoTurns}</span><strong>{format(demoTurns)}</strong></div>
-            <div className="metric-divider" />
-            <h3>{t.tokens}<span>↗</span></h3>
-            <div className="metric-line"><span>{t.input}</span><strong>{format(usage.input)}</strong></div>
-            <div className="metric-line"><span>{t.output}</span><strong>{format(usage.output)}</strong></div>
-            <div className="metric-line cache"><span>{t.cache}</span><strong>{format(usage.cacheRead)} / {format(usage.cacheWrite)}</strong></div>
-            <p className="metric-help">{engine === "demo" ? t.demoTokens : t.actualHelp}</p>
-            <div className="estimate"><span>{engine === "demo" ? t.hypothetical : t.estimated}</span><strong>≈ {format(estimate)}</strong><small>tokens</small></div>
-            <p className="metric-help">{t.estimateHelp}</p>
-            <p className="metric-help">{t.estimatedOutput}</p>
-            <button className="prompt-button" onClick={() => setShowPrompt(true)}>{t.prompt} <span>↗</span></button>
-            <p className="metric-help privacy-note">{engine === "demo" ? t.demoPrivacy : viaBackend ? t.backendHelp : t.privacyDetail}</p>
-          </aside>
-        </div>
+        </div>}
       </main>
       <dialog ref={dialog} className="prompt-modal" aria-labelledby="prompt-title"
         onCancel={() => setShowPrompt(false)} onClick={(event) => {

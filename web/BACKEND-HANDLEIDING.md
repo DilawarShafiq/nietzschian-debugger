@@ -121,7 +121,8 @@ In de webapp:
 1. Kies **Live model** en **GreenPT**.
 2. Kies **Via ingestelde backend** (standaard als de URL geconfigureerd is).
 3. Plak het **backend-toegangstoken**, niet de GreenPT-sleutel.
-4. Bevestig dat je een oefencasus gebruikt en verstuur een vraag.
+4. Klik **Verbinding valideren** (of druk Enter in het tokenveld). De backend controleert zijn GreenPT-sleutel en het ingestelde model via de modellen-API; dit is geen betaald proefgesprek. De live chat blijft verborgen tot deze controle slaagt.
+5. Bevestig dat je een oefencasus gebruikt en verstuur een vraag. Quota of gespreksrechten kunnen alsnog een expliciete fout geven.
 
 Het token blijft alleen in paginageheugen en gaat als bearer-header naar jouw
 backend. Browser-JavaScript kan het lezen. Het is een gedeeld demowachtwoord,

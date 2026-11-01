@@ -3,6 +3,8 @@ import { once } from "node:events";
 import { test } from "node:test";
 import type { AddressInfo } from "node:net";
 import { createApp, type CompletionFactory } from "./app.js";
+import { ProviderError } from "./chat.js";
+import type { Provider } from "../shared/prompts.js";
 
 const payload = {
   language: "nl", philosopher: "nietzsche", fictionalCase: true,
@@ -10,8 +12,11 @@ const payload = {
 };
 const usage = { input: 100, output: 25, cacheRead: 0, cacheWrite: 0 };
 
-async function withApp(factory: CompletionFactory, run: (url: string) => Promise<void>, origin?: string, token?: string) {
-  const server = createApp({ claude: "test-model", greenpt: "green-test-model" }, factory, origin, token).listen(0, "127.0.0.1");
+async function withApp(
+  factory: CompletionFactory, run: (url: string) => Promise<void>, origin?: string, token?: string,
+  validator?: (key: string | undefined, provider: Provider) => Promise<string>,
+) {
+  const server = createApp({ claude: "test-model", greenpt: "green-test-model" }, factory, origin, token, validator).listen(0, "127.0.0.1");
   await once(server, "listening");
   const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   try { await run(url); }
@@ -160,5 +165,29 @@ test("request limit blocks the twenty-first call before provider access", async 
       assert.equal(result.status, index < 20 ? 200 : 429);
     }
     assert.equal(calls, 20);
+  });
+});
+
+test("backend validation is authenticated, reports provider failures, and never invokes completion", async () => {
+  const token = "fake-validation-token-at-least-32-characters";
+  let checks = 0;
+  await withApp(() => { assert.fail("Validation must not generate a completion"); }, async url => {
+    const send = (authorization: string, provider = "greenpt") => fetch(`${url}/api/validate`, {
+      method: "POST", headers: { "Content-Type": "application/json", Authorization: authorization },
+      body: JSON.stringify({ provider }),
+    });
+    assert.equal((await send("")).status, 401);
+    assert.equal(checks, 0);
+    const valid = await send(`Bearer ${token}`);
+    assert.equal(valid.status, 200);
+    assert.deepEqual(await valid.json(), { provider: "greenpt", model: "validated-model" });
+    const invalid = await send(`Bearer ${token}`, "claude");
+    assert.equal(invalid.status, 502);
+    assert.deepEqual(await invalid.json(), { error: "PROVIDER_AUTH" });
+    assert.equal(checks, 2);
+  }, undefined, token, async (_key, provider) => {
+    checks++;
+    if (provider === "claude") throw new ProviderError(401, usage, 0);
+    return "validated-model";
   });
 });

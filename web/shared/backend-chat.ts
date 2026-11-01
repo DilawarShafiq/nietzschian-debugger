@@ -29,9 +29,33 @@ export function backendOrigin(value: string): string {
     || url.username || url.password || url.search || url.hash || url.pathname !== "/") {
     throw new Error("Backend must be an HTTPS origin (HTTP allowed only on localhost).");
   }
+
   return url.origin;
 }
 
+export async function validateBackend(origin: string, token: string, provider: "claude" | "greenpt"): Promise<string> {
+    let response: Response;
+    let body: unknown;
+    try {
+      response = await fetch(`${backendOrigin(origin)}/api/validate`, {
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token.trim()}` },
+        body: JSON.stringify({ provider }), signal: AbortSignal.timeout(20000),
+      });
+      body = await response.json();
+    } catch (error) {
+      if (error instanceof TypeError || error instanceof SyntaxError || error instanceof DOMException) {
+        throw new BackendChatError({ error: "BACKEND_UNAVAILABLE" });
+      }
+      throw error;
+    }
+    if (!response.ok) {
+      const failure = errorSchema.safeParse(body);
+      throw new BackendChatError(failure.success ? failure.data : { error: "BACKEND_UNAVAILABLE" });
+    }
+    const result = z.object({ provider: z.literal(provider), model: z.string().min(1) }).safeParse(body);
+    if (!result.success) throw new BackendChatError({ error: "BACKEND_UNAVAILABLE" });
+    return result.data.model;
+  }
 export async function backendChat(
   origin: string, token: string, input: unknown, fetcher: typeof fetch = fetch,
 ): Promise<ChatResponse> {

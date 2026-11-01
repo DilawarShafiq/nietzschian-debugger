@@ -3,12 +3,14 @@ import { rateLimit } from "express-rate-limit";
 import { chat, chatSchema, ProviderError, ResponseError, type Complete } from "./chat.js";
 import type { Provider } from "../shared/prompts.js";
 import { timingSafeEqual } from "node:crypto";
+import { validationSchema } from "../shared/validate-provider.js";
 
 export type CompletionFactory = (apiKey: string | undefined, provider: Provider) => Complete | null;
 
 export function createApp(
   models: Record<Provider, string>, completionFactory: CompletionFactory,
   frontendOrigin?: string, accessToken?: string,
+  validateConnection?: (key: string | undefined, provider: Provider) => Promise<string>,
 ) {
   const app = express();
   app.disable("x-powered-by");
@@ -39,7 +41,7 @@ export function createApp(
     if (request.method === "OPTIONS") { response.sendStatus(204); return; }
     next();
   });
-  app.use("/api/chat", rateLimit({
+  app.use(["/api/chat", "/api/validate"], rateLimit({
     windowMs: 10 * 60 * 1000,
     limit: 20,
     standardHeaders: "draft-8",
@@ -49,7 +51,7 @@ export function createApp(
       response.status(429).json({ error: "RATE_LIMIT" });
     },
   }));
-  app.use("/api/chat", (request, response, next) => {
+  app.use(["/api/chat", "/api/validate"], (request, response, next) => {
     if (accessToken) {
       const expected = Buffer.from(`Bearer ${accessToken}`);
       const received = Buffer.from(request.get("authorization") || "");
@@ -60,6 +62,28 @@ export function createApp(
       }
     }
     next();
+  });
+  app.post("/api/validate", express.json({ limit: "4kb" }), async (request, response) => {
+    const parsed = validationSchema.safeParse(request.body);
+    if (!parsed.success) {
+      console.warn("Connection validation rejected: invalid payload.");
+      response.status(400).json({ error: "INVALID_REQUEST" }); return;
+    }
+    if (!validateConnection) {
+      console.warn("Connection validation unavailable.");
+      response.status(503).json({ error: "PROVIDER_UNAVAILABLE" }); return;
+    }
+    try {
+      const model = await validateConnection(parsed.data.apiKey, parsed.data.provider);
+      response.json({ model, provider: parsed.data.provider });
+    } catch (error) {
+      const status = error instanceof ProviderError ? error.status : undefined;
+      console.warn("Connection validation failed.", { provider: parsed.data.provider, status });
+      const code = error instanceof Error && error.message === "MISSING_KEY" ? "MISSING_KEY"
+        : status === 401 ? "PROVIDER_AUTH" : status === 403 ? "PROVIDER_FORBIDDEN"
+        : status === 429 ? "PROVIDER_RATE_LIMIT" : "PROVIDER_UNAVAILABLE";
+      response.status(502).json({ error: code });
+    }
   });
   app.post("/api/chat", express.json({ limit: "128kb" }), async (request, response) => {
     const parsed = chatSchema.safeParse(request.body);
