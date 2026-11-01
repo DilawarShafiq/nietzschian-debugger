@@ -332,9 +332,28 @@ strict > that owns its edge. You trust what the code is *for* over what it
 it is the whole argument.
 ```
 
-> It runs your code in a separate process with a timeout — your own functions, called
-> the way you'd call them. It only picks functions it can invoke with simple literal
-> arguments, and a function that raises is a legitimate answer (predict that too).
+> `predict` requires **Linux with [bubblewrap](https://github.com/containers/bubblewrap)**
+> (`bwrap`) and permission to create user namespaces. Both the callable check and the
+> function execution run with no network, a clean environment, and read-only access
+> to the project directory and Python runtime. The five-second timeout alone is
+> not a sandbox. On macOS, Windows, or when sandbox setup fails, execution is refused:
+> there is no unsandboxed fallback. Other commands are unaffected.
+>
+> The mounted project and runtime are still readable: keep secrets out of them.
+> Dependencies, imports, and functions requiring host files, writes, or networking
+> may fail under these restrictions. This is not a guarantee against kernel exploits
+> or resource exhaustion; use a disposable VM for hostile code.
+
+### Installation versus runtime safety
+
+The source checkout uses standard setuptools packaging, but `pip install` downloads
+the package and dependencies from your configured index, not necessarily this
+checkout. A source review does not verify the current PyPI artifact or dependencies.
+Use a trusted index and an isolated virtual environment; sandboxing `predict` does
+not sandbox installation or the rest of the application.
+
+`debug`, `roast`, and `predict` send supplied code and context to the selected LLM
+provider. Only use sensitive material with an approved provider or a local model.
 
 ## Roast Your Code — `roast`
 

@@ -6,17 +6,20 @@ and names the gap between what you believed and what the code does. At the end, 
 Proof-of-Understanding report names the *pattern* in your misses — not a score, a
 pattern. "You keep missing early returns" is worth more than "73%".
 
-Execution runs in a separate Python process with a timeout — your own code, run
-the way you'd run it yourself.
+Execution requires a Linux bubblewrap sandbox: no network, a clean environment,
+and read-only project/runtime mounts. There is no unsandboxed fallback.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import platform
 import re
+import shutil
 import subprocess
 import sys
+import sysconfig
 from pathlib import Path
 
 from ..llm.client import call_llm, get_client, get_conversation_model, MissingApiKeyError
@@ -88,6 +91,76 @@ def _module_spec(file_path: str) -> tuple[str, str | None]:
     return str(d), ".".join(reversed(parts))
 
 
+def _sandbox_command(syspath: str) -> tuple[list[str] | None, str | None]:
+    """Build a fail-closed Linux bubblewrap command for executing project code."""
+    if platform.system() != "Linux":
+        return None, "predict requires Linux with bubblewrap; code execution is disabled on this platform."
+    bwrap = shutil.which("bwrap")
+    if bwrap is None:
+        return None, "predict requires bubblewrap (`bwrap`) to sandbox code execution."
+
+    args = [bwrap, "--die-with-parent", "--new-session", "--unshare-all"]
+    mounted: set[Path] = set()
+    directories = {Path("/")}
+
+    def add_readonly(path: Path) -> None:
+        if not path.exists():
+            return
+        if path == Path("/"):
+            return
+        if any(root == path or root in path.parents for root in mounted):
+            return
+        for parent in reversed(path.parents):
+            if parent in directories or any(root == parent or root in parent.parents for root in mounted):
+                continue
+            args.extend(["--dir", str(parent)])
+            directories.add(parent)
+        args.extend(["--ro-bind", str(path), str(path)])
+        mounted.add(path)
+
+    add_readonly(Path("/usr"))
+    add_readonly(Path("/etc/ld.so.cache"))
+    for path in (Path("/bin"), Path("/lib"), Path("/lib64")):
+        if path.is_symlink():
+            args.extend(["--symlink", os.readlink(path), str(path)])
+        else:
+            add_readonly(path)
+
+    runtime_paths = {
+        Path(sys.prefix).resolve(),
+        Path(sys.base_prefix).resolve(),
+        Path(sys.executable).resolve(),
+        *(
+            Path(path).resolve()
+            for key, path in sysconfig.get_paths().items()
+            if key in {"stdlib", "platstdlib", "purelib", "platlib"}
+        ),
+    }
+    for path in sorted(runtime_paths, key=lambda item: len(item.parts)):
+        if not path.exists() or path == Path("/"):
+            continue
+        add_readonly(path)
+
+    source_root = Path(syspath).resolve()
+    if not source_root.is_dir():
+        return None, f"Cannot sandbox source directory: {source_root}"
+    if source_root in {Path("/"), Path.home().resolve()}:
+        return None, "Use a dedicated project directory, not the filesystem root or your home directory."
+    args.extend(
+        [
+            "--dir", "/workspace",
+            "--ro-bind", str(source_root), "/workspace",
+            "--dev", "/dev",
+            "--tmpfs", "/tmp",
+            "--chdir", "/workspace",
+            "--clearenv",
+            "--setenv", "PATH", "/usr/bin:/bin",
+            "--setenv", "LANG", "C.UTF-8",
+        ]
+    )
+    return args, None
+
+
 _RUNNER = r"""
 import sys, json, importlib
 p = json.load(sys.stdin)
@@ -112,33 +185,40 @@ try:
     sys.path.insert(0, p["syspath"])
     mod = importlib.import_module(p["module"])
     print(json.dumps({"ok": callable(getattr(mod, p["func"], None))}))
-except Exception:
-    print(json.dumps({"ok": False}))
+except Exception as e:
+    print(json.dumps({"ok": False, "stage": "setup", "error": type(e).__name__ + ": " + str(e)}))
 """
 
 
 def _run_subprocess(script: str, payload: dict) -> dict | None:
-    # Force the child to UTF-8 and decode its output as UTF-8 with errors replaced,
-    # so code that prints emoji or accented text can't crash the reader with a
-    # Windows cp1252 UnicodeDecodeError. We only parse our own ASCII JSON line.
-    child_env = {**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"}
+    sandbox, error = _sandbox_command(payload["syspath"])
+    if sandbox is None:
+        return {"stage": "setup", "error": error or "No supported sandbox is available."}
+
+    sandbox_payload = {**payload, "syspath": "/workspace"}
     try:
         proc = subprocess.run(
-            [sys.executable, "-c", script],
-            input=json.dumps(payload),
+            [*sandbox, sys.executable, "-I", "-B", "-X", "utf8", "-c", script],
+            input=json.dumps(sandbox_payload),
             capture_output=True,
             encoding="utf-8",
             errors="replace",
             timeout=_TIMEOUT_SECONDS,
-            env=child_env,
         )
     except subprocess.TimeoutExpired:
         return {"stage": "setup", "error": f"timed out after {_TIMEOUT_SECONDS}s"}
+    except OSError as error:
+        return {"stage": "setup", "error": f"Could not start sandbox: {error}"}
+    if proc.returncode != 0:
+        error = (proc.stderr or "").strip()
+        return {"stage": "setup", "error": error or f"sandboxed process exited with status {proc.returncode}"}
     for line in reversed((proc.stdout or "").strip().splitlines()):
         try:
-            return json.loads(line)
-        except Exception:
+            output = json.loads(line)
+        except json.JSONDecodeError:
             continue
+        if isinstance(output, dict):
+            return output
     return None
 
 
@@ -152,6 +232,8 @@ def execute_call(syspath: str, module: str, func: str, args: list) -> dict:
 def is_callable_top_level(syspath: str, module: str, func: str) -> bool:
     """True if `func` is a directly callable top-level name in the module."""
     out = _run_subprocess(_CHECK, {"syspath": syspath, "module": module, "func": func})
+    if out and out.get("stage") == "setup":
+        display_error(f"Could not check {func}: {out['error']}")
     return bool(out and out.get("ok"))
 
 
@@ -322,6 +404,20 @@ def predict_command(file_path: str, rounds: int = 3) -> None:
         display_error(f"{file_path} is empty — give me code to test you on.")
         sys.exit(2)
 
+    syspath, module = _module_spec(file_path)
+    if module is None:
+        module = Path(file_path).stem
+
+    sandbox_probe = _run_subprocess('print(\'{"stage":"ready"}\')', {"syspath": syspath})
+    if not sandbox_probe or sandbox_probe.get("stage") != "ready":
+        error = (
+            sandbox_probe.get("error", "sandbox preflight returned no output")
+            if sandbox_probe
+            else "sandbox preflight returned no output"
+        )
+        display_error(f"predict cannot run without an effective sandbox: {error}")
+        sys.exit(2)
+
     from ..llm import providers
 
     if providers.active() is None:
@@ -332,10 +428,6 @@ def predict_command(file_path: str, rounds: int = 3) -> None:
             sys.exit(1)
 
     model = get_conversation_model()
-    syspath, module = _module_spec(file_path)
-    if module is None:
-        module = Path(file_path).stem
-
     console.print("\n[bold cyan]Nietzschian Debugger[/bold cyan] [dim][predict mode][/dim]\n")
 
     rounds = max(1, min(rounds, _MAX_ROUNDS))
