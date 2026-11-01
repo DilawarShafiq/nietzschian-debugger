@@ -61,6 +61,23 @@ def debug(problem: str, lens: str, use_diff: bool, diff_since: str, model_spec: 
 
 
 @cli.command()
+@click.argument("topic")
+@click.option(
+    "--model",
+    "model_spec",
+    default=None,
+    help="LLM to use (default: Claude). e.g. openai:gpt-4o-mini, ollama:llama3, gemini:gemini-1.5-flash.",
+)
+def reflect(topic: str, model_spec: str) -> None:
+    """Explore a personal situation with psychology-informed questions, not diagnoses."""
+    from .llm import providers
+    from .commands.reflect import reflect_command
+
+    providers.configure(model_spec)
+    reflect_command(topic)
+
+
+@cli.command()
 def demo() -> None:
     """Watch a scripted session with no API key -- then run it on your own bug."""
     from .commands.demo import run_demo

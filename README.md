@@ -382,6 +382,44 @@ honest thing you've written all week.
 
 ## Development
 
+### Run this fork locally
+
+Use an editable install in a virtual environment so the command runs this checkout,
+not a separately installed PyPI copy:
+
+```bash
+cd /Users/bartvanderwal/Code/nietzschian-diagnoser
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[dev,providers]"
+
+# Verify which source is being imported
+python -c "import nietzschian_debugger; print(nietzschian_debugger.__file__)"
+
+# New fork-only mode: questions about a personal situation, not debugging
+nietzschian reflect "I keep postponing decisions"
+nietzschian reflect "I keep postponing decisions" --model ollama:llama3
+```
+
+`reflect` is psychology-informed self-reflection, **not diagnosis, treatment, or
+therapy**. It asks one question at a time, with a retry for responses failing the
+question/answer heuristics. These checks are not a guarantee of clinical safety.
+Urgent safety responses may override question-only behavior. Stop with `quit`,
+`exit`, Ctrl+C, or Ctrl+D.
+
+Text goes to the selected model provider. Unlike debugging mode, reflection does
+not automatically read file paths, execute code, score you, or save sessions.
+Avoid sensitive details with unapproved hosted providers; a local model is also
+supported. Long conversations may reach the provider's context limit.
+
+Change the reflection persona in
+[`SYSTEM_PROMPT`](nietzschian_debugger/commands/reflect.py); edits take effect on the
+next run without reinstalling. Existing `debug`, `roast`, and `predict` commands
+remain unchanged on this feature branch.
+
+The psychology feature is fork-only. The independent `security/predict-sandbox`
+branch contains the upstream sandbox proposal; it is not part of this feature.
+
 ```bash
 # Clone and install
 git clone https://github.com/DilawarShafiq/nietzschian-debugger.git
