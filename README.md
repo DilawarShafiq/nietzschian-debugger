@@ -443,8 +443,7 @@ the thinker affects subsequent turns, not just the avatar. The demo has separate
 fixed answers for each thinker. Popper focuses on falsifiability, counterevidence,
 testable predictions, and distinguishing lack of refutation from proof.
 These are clinical-reflection adaptations, not copies of the Python debugger prompts.
-The three original partners have generated portraits; Popper has a symbolic SVG
-illustration. You can inspect the active
+The three original partners have generated portraits; Popper uses a photograph from [LSE Library / Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Karl_Popper.jpg), identified by Flickr Commons as having no known copyright restrictions. The UI crops the photograph to a circle and displays photo credits, the original image link, and attribution to [Dilawar Shafiq's Nietzschian Debugger](https://github.com/DilawarShafiq/nietzschian-debugger) (MIT). You can inspect the active
 prompt in the UI. This is an educational reflection demo, not a clinician, medical
 device, diagnostic system, or treatment recommender.
 

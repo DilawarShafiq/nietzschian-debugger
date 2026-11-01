@@ -29,6 +29,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .sidebar-note p { font: 500 23px/1.4 "Manrope", sans-serif; white-space: pre-line; letter-spacing: -.7px; margin: 10px 0; }
 .sidebar-note small { font-size: 11px; line-height: 1.9; color: #acbdb0; display: block; max-width: 205px; }
 .settings { margin-top: auto; padding-top: 34px; }
+.attribution { font-size: 12px; line-height: 1.6; color: #bbcabf; margin-top: 20px; }
+.attribution p { margin: 0 0 10px; }
+.attribution a { color: #eef3ed; text-underline-offset: 3px; overflow-wrap: anywhere; }
 .language-row { display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; border-bottom: 1px solid #3a4c41; margin-bottom: 17px; font-size: 11px; color: #bbcabf; }
 .language-toggle { display: flex; padding: 3px; background: #102019; border-radius: 7px; gap: 3px; }
 .language-toggle button { border: 0; color: #98aa9e; background: transparent; padding: 5px 8px; font-size: 10px; border-radius: 4px; }

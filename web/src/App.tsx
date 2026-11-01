@@ -23,7 +23,7 @@ function Avatar({ philosopher, large = false }: { philosopher: Philosopher; larg
     role="img"
     aria-label={partners[philosopher].name}
     style={{
-      backgroundImage: `url("${philosopher === "popper" ? `${import.meta.env.BASE_URL}popper.svg` : avatarUrl}")`,
+      backgroundImage: `url("${philosopher === "popper" ? `${import.meta.env.BASE_URL}popper.png` : avatarUrl}")`,
       backgroundSize: philosopher === "popper" ? "cover" : "300% auto",
       backgroundPosition: `${partners[philosopher].position} 30%`,
     }}
@@ -198,6 +198,17 @@ export function App() {
               disabled={pending} onClick={() => { setLanguage(value); setError(null); }}>{value.toUpperCase()}</button>)}
           </div></div>
           {engine === "demo" && <small className="key-help demo-sidebar-help">{t.demoPrivacy}</small>}
+          <div className="attribution">
+            <p>{t.upstreamCredit} <a href="https://github.com/DilawarShafiq/nietzschian-debugger"
+              target="_blank" rel="noopener noreferrer">Nietzschian Debugger · Dilawar Shafiq</a> (MIT).</p>
+            <p>{t.popperCredit} <a href="https://commons.wikimedia.org/wiki/File:Karl_Popper.jpg"
+              target="_blank" rel="noopener noreferrer">LSE Library / Wikimedia Commons</a>.
+              {" "}{t.photoRights} {" "}{t.photoCrop}</p>
+            <p><a href="https://nl.wikipedia.org/wiki/Karl_Popper"
+              target="_blank" rel="noopener noreferrer">Karl Popper · Wikipedia</a>
+              {" · "}<a href="https://upload.wikimedia.org/wikipedia/commons/4/43/Karl_Popper.jpg"
+                target="_blank" rel="noopener noreferrer">{t.originalPhoto}</a></p>
+          </div>
         </div>
       </aside>
 
