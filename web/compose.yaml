@@ -1,0 +1,22 @@
+services:
+  backend:
+    build: .
+    image: nietzschian-greenpt-backend:local
+    restart: unless-stopped
+    init: true
+    ports:
+      - "127.0.0.1:3080:3080"
+    environment:
+      API_ONLY: "true"
+      ALLOW_SERVER_KEY: "true"
+      GREENPT_API_KEY: ${GREENPT_API_KEY:?Set GREENPT_API_KEY in .env}
+      GREENPT_MODEL: ${GREENPT_MODEL:-mistral-small-3.2-24b-instruct-2506}
+      BACKEND_ACCESS_TOKEN: ${BACKEND_ACCESS_TOKEN:?Set a random token of at least 32 characters in .env}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-https://bartvanderwal.github.io}
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true

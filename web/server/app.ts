@@ -2,12 +2,17 @@ import express from "express";
 import { rateLimit } from "express-rate-limit";
 import { chat, chatSchema, ProviderError, ResponseError, type Complete } from "./chat.js";
 import type { Provider } from "../shared/prompts.js";
+import { timingSafeEqual } from "node:crypto";
 
 export type CompletionFactory = (apiKey: string | undefined, provider: Provider) => Complete | null;
 
-export function createApp(models: Record<Provider, string>, completionFactory: CompletionFactory, frontendOrigin?: string) {
+export function createApp(
+  models: Record<Provider, string>, completionFactory: CompletionFactory,
+  frontendOrigin?: string, accessToken?: string,
+) {
   const app = express();
   app.disable("x-powered-by");
+  app.get("/healthz", (_request, response) => response.json({ status: "ok" }));
   app.use((_request, response, next) => {
     response.setHeader("Referrer-Policy", "no-referrer");
     response.setHeader("X-Content-Type-Options", "nosniff");
@@ -29,7 +34,7 @@ export function createApp(models: Record<Provider, string>, completionFactory: C
       response.setHeader("Access-Control-Allow-Origin", origin);
       response.setHeader("Vary", "Origin");
       response.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-      response.setHeader("Access-Control-Allow-Headers", "Content-Type");
+      response.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
     }
     if (request.method === "OPTIONS") { response.sendStatus(204); return; }
     next();
@@ -44,6 +49,18 @@ export function createApp(models: Record<Provider, string>, completionFactory: C
       response.status(429).json({ error: "RATE_LIMIT" });
     },
   }));
+  app.use("/api/chat", (request, response, next) => {
+    if (accessToken) {
+      const expected = Buffer.from(`Bearer ${accessToken}`);
+      const received = Buffer.from(request.get("authorization") || "");
+      if (received.length !== expected.length || !timingSafeEqual(received, expected)) {
+        console.warn("Chat request rejected: backend authentication.");
+        response.status(401).json({ error: "BACKEND_AUTH" });
+        return;
+      }
+    }
+    next();
+  });
   app.post("/api/chat", express.json({ limit: "128kb" }), async (request, response) => {
     const parsed = chatSchema.safeParse(request.body);
     if (!parsed.success) {
@@ -52,13 +69,13 @@ export function createApp(models: Record<Provider, string>, completionFactory: C
       return;
     }
     const { provider } = parsed.data;
-    const complete = completionFactory(parsed.data.apiKey, provider);
-    if (!complete) {
-      console.warn("Chat unavailable: provider key is not configured.", { provider });
-      response.status(503).json({ error: "MISSING_KEY" });
-      return;
-    }
     try {
+      const complete = completionFactory(parsed.data.apiKey, provider);
+      if (!complete) {
+        console.warn("Chat unavailable: provider key is not configured.", { provider });
+        response.status(503).json({ error: "MISSING_KEY" });
+        return;
+      }
       const { language, philosopher, messages } = parsed.data;
       response.json({ ...await chat(language, philosopher, messages, models[provider], complete), provider });
     } catch (error) {
@@ -71,7 +88,7 @@ export function createApp(models: Record<Provider, string>, completionFactory: C
       }
       const status = error instanceof ProviderError ? error.status : undefined;
       console.error("Model request failed.", { provider, status: typeof status === "number" ? status : "unknown" });
-      const code = status === 401 || status === 403 ? "PROVIDER_AUTH"
+      const code = status === 403 ? "PROVIDER_FORBIDDEN" : status === 401 ? "PROVIDER_AUTH"
         : status === 429 ? "PROVIDER_RATE_LIMIT" : "PROVIDER_UNAVAILABLE";
       response.status(status === 429 ? 429 : 502).json({
         error: code,

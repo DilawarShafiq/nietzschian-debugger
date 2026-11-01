@@ -10,8 +10,8 @@ const payload = {
 };
 const usage = { input: 100, output: 25, cacheRead: 0, cacheWrite: 0 };
 
-async function withApp(factory: CompletionFactory, run: (url: string) => Promise<void>, origin?: string) {
-  const server = createApp({ claude: "test-model", greenpt: "green-test-model" }, factory, origin).listen(0, "127.0.0.1");
+async function withApp(factory: CompletionFactory, run: (url: string) => Promise<void>, origin?: string, token?: string) {
+  const server = createApp({ claude: "test-model", greenpt: "green-test-model" }, factory, origin, token).listen(0, "127.0.0.1");
   await once(server, "listening");
   const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   try { await run(url); }
@@ -23,10 +23,45 @@ test("missing key is explicit and never invokes a model", async () => {
     const result = await fetch(`${url}/api/chat`, {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
     });
+
     assert.equal(result.status, 503);
     assert.deepEqual(await result.json(), { error: "MISSING_KEY" });
     assert.equal(result.headers.get("cache-control"), "no-store");
   });
+});
+
+test("backend token protects server-key access and preflight permits Authorization without a token", async () => {
+  const token = "test-backend-token-of-at-least-32-characters";
+  let calls = 0;
+  await withApp(() => {
+    calls++;
+    return async () => ({ text: "Welke aanname onderzoek je?", usage });
+  }, async url => {
+    const health = await fetch(`${url}/healthz`);
+    assert.equal(health.status, 200);
+    assert.deepEqual(await health.json(), { status: "ok" });
+    const preflight = await fetch(`${url}/api/chat`, {
+      method: "OPTIONS", headers: { Origin: "https://bartvanderwal.github.io" },
+    });
+    assert.equal(preflight.status, 204);
+    assert.match(preflight.headers.get("access-control-allow-headers") || "", /Authorization/);
+    for (const authorization of ["", "Bearer wrong"]) {
+      const denied = await fetch(`${url}/api/chat`, {
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: authorization },
+        body: JSON.stringify(payload),
+      });
+      assert.equal(denied.status, 401);
+      assert.deepEqual(await denied.json(), { error: "BACKEND_AUTH" });
+    }
+    assert.equal(calls, 0);
+    const allowed = await fetch(`${url}/api/chat`, {
+      method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ ...payload, provider: "greenpt" }),
+    });
+    assert.equal(allowed.status, 200);
+    assert.ok(!(await allowed.text()).includes(token));
+    assert.equal(calls, 1);
+  }, "https://bartvanderwal.github.io", token);
 });
 
 test("user key is passed only to the factory and is never echoed", async () => {

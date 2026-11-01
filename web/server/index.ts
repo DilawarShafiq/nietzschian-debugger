@@ -22,6 +22,10 @@ const models: Record<Provider, string> = {
   greenpt: process.env.GREENPT_MODEL || "mistral-small-3.2-24b-instruct-2506",
 };
 const frontendOrigin = process.env.FRONTEND_ORIGIN;
+const accessToken = process.env.BACKEND_ACCESS_TOKEN?.trim();
+if (process.env.ALLOW_SERVER_KEY === "true" && (!accessToken || accessToken.length < 32)) {
+  throw new Error("Server-key access requires BACKEND_ACCESS_TOKEN with at least 32 characters.");
+}
 if (frontendOrigin && new URL(frontendOrigin).origin !== frontendOrigin) {
   throw new Error("FRONTEND_ORIGIN must be an exact origin, without a path or trailing slash.");
 }
@@ -30,9 +34,11 @@ const app = createApp(models, (userKey, provider) => {
   const key = userKey || (!frontendOrigin || process.env.ALLOW_SERVER_KEY === "true" ? keys[provider] : undefined);
   if (!key) return null;
   return completion(provider, key, models[provider]);
-}, frontendOrigin);
+}, frontendOrigin, accessToken);
 
-if (production) {
+if (process.env.API_ONLY === "true") {
+  app.use((_request, response) => response.sendStatus(404));
+} else if (production) {
   const clientPath = path.join(root, "dist/client");
   if (!existsSync(path.join(clientPath, "index.html"))) throw new Error("Run npm run build before npm start.");
   app.use(express.static(clientPath));

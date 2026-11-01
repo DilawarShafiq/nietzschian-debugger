@@ -560,8 +560,10 @@ Expected URL: <https://bartvanderwal.github.io/nietzschian-diagnoser/>.
 GitHub Pages (like GitLab Pages) cannot run Express, but direct provider calls
 only require a static frontend and provider CORS permission. Claude allowed a
 preflight from the Pages origin during testing. A real paid completion has not
-been tested without a user-provided key. `CLINICIAN_API_URL` and
-`VITE_API_BASE_URL` are no longer used by this frontend or workflow.
+been tested without a user-provided key. An optional `CLINICIAN_API_URL`
+repository variable configures an explicit GreenPT backend route on Pages
+(`VITE_API_BASE_URL` for a local build). Claude remains direct. Without a URL,
+both providers remain direct.
 
 For a manual static build:
 
@@ -576,8 +578,15 @@ BASE_PATH=/nietzschian-diagnoser/ npm run build
 using `web/.env.example`; they are never embedded into the frontend and cannot
 replace the UI key. The API binds to `127.0.0.1` by default and limits requests
 to 20 per IP per ten minutes. With `FRONTEND_ORIGIN` configured, server-key use
-requires explicit `ALLOW_SERVER_KEY=true`. This API has no authentication:
-do not expose an operator-funded key publicly. CORS is not authentication.
+requires explicit `ALLOW_SERVER_KEY=true`. Enabling server-key use requires
+`BACKEND_ACCESS_TOKEN` with at least 32 characters; clients must send it in a
+bearer header. CORS is not authentication. The token is a shared demo credential,
+not individual accounts or a hard spending limit.
+
+For a non-root Docker/OCI image, Compose configuration, HTTPS reverse proxy
+setup and Pages connection, see [the VPS user manual](web/BACKEND-HANDLEIDING.md).
+The GreenPT key is configured at runtime, excluded from the image, and never
+sent to the frontend. This avoids browser CORS but cannot fix a provider's 403.
 
 The local Python CLI and separate upstream security PR are unaffected.
 

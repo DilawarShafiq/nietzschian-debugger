@@ -6,6 +6,7 @@ import {
 } from "../shared/prompts.js";
 import { browserChat, browserChatError } from "../shared/browser-chat.js";
 import { DEFAULT_MODELS, PROVIDER_ENDPOINTS } from "../shared/providers.js";
+import { backendChat, backendOrigin, BackendChatError } from "../shared/backend-chat.js";
 import { errors, partners, translations } from "./i18n.js";
 import { demoQuestions, demoReply, initialDemoTopics, type DemoTopic } from "../shared/demo.js";
 import { MessageContent } from "./MessageContent.js";
@@ -13,6 +14,8 @@ import { MessageContent } from "./MessageContent.js";
 type DisplayMessage = ChatMessage & { philosopher?: Philosopher; safety?: boolean; demo?: boolean };
 const avatarUrl = `${import.meta.env.BASE_URL}philosophers.png`;
 const initialUsage: TokenUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+const configuredBackend = import.meta.env.VITE_API_BASE_URL
+  ? backendOrigin(import.meta.env.VITE_API_BASE_URL) : "";
 
 function Avatar({ philosopher, large = false }: { philosopher: Philosopher; large?: boolean }) {
   return <span
@@ -34,6 +37,8 @@ export function App() {
   const [draft, setDraft] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [provider, setProvider] = useState<Provider>("claude");
+  const [greenptRoute, setGreenptRoute] = useState<"direct" | "backend">(configuredBackend ? "backend" : "direct");
+  const [backendToken, setBackendToken] = useState("");
   const [consent, setConsent] = useState(false);
   const [engine, setEngine] = useState<"demo" | "live">("demo");
   const [demoTopics, setDemoTopics] = useState<DemoTopic[]>(initialDemoTopics);
@@ -51,6 +56,7 @@ export function App() {
   const locked = useRef(false);
   const t = translations[language];
   const partner = partners[philosopher];
+  const viaBackend = provider === "greenpt" && greenptRoute === "backend";
   const nextMessages: ChatMessage[] = [
     ...messages.map(({ role, content }) => ({ role, content })),
     ...(draft.trim() ? [{ role: "user" as const, content: draft.trim() }] : []),
@@ -100,7 +106,9 @@ export function App() {
       setDraft("");
       return;
     }
-    if (!apiKey.trim()) { setError(errors[language].MISSING_KEY); return; }
+    if (viaBackend ? !backendToken.trim() : !apiKey.trim()) {
+      setError(errors[language][viaBackend ? "BACKEND_AUTH" : "MISSING_KEY"]); return;
+    }
     locked.current = true;
     setPending(true);
     setError(null);
@@ -108,18 +116,21 @@ export function App() {
     setMessages((previous) => [...previous, { role: "user", content: submitted }]);
     setDraft("");
     try {
-      const result = await browserChat({
+      const input = {
         language, philosopher, provider, messages: submittedMessages, fictionalCase: true,
-        apiKey: apiKey.trim(),
-      });
+        ...(!viaBackend ? { apiKey: apiKey.trim() } : {}),
+      };
+      const result = viaBackend
+        ? await backendChat(configuredBackend, backendToken, input)
+        : await browserChat(input);
       addUsage(result.usage, result.providerRequests);
       setModel(result.model);
       setMessages((previous) => [
         ...previous, { role: "assistant", content: result.reply, philosopher, safety: result.safety },
       ]);
     } catch (error) {
-      const failure = browserChatError(error);
-      console.warn("Direct provider request failed.", { provider, code: failure.error });
+      const failure = error instanceof BackendChatError ? error.failure : browserChatError(error);
+      console.warn("Provider request failed.", { provider, viaBackend, code: failure.error });
       addUsage(failure.usage, failure.providerRequests);
       setError(errors[language][failure.error]);
       setMessages((previous) => previous.slice(0, -1));
@@ -141,14 +152,21 @@ export function App() {
     if (pending || value === engine) return;
     if (messages.length && !window.confirm(t.switchEngine)) return;
     setEngine(value); setMessages([]); setDraft(""); setError(null);
-    setDemoTopics(initialDemoTopics); setApiKey(""); setConsent(false);
+    setDemoTopics(initialDemoTopics); setApiKey(""); setBackendToken(""); setConsent(false);
   }
 
   function switchProvider(value: Provider) {
     if (pending || value === provider) return;
     if (messages.length && !window.confirm(t.switchProvider)) return;
     setProvider(value); setMessages([]); setDraft(""); setError(null);
-    setApiKey(""); setConsent(false); setModel(DEFAULT_MODELS[value]);
+    setApiKey(""); setBackendToken(""); setConsent(false); setModel(DEFAULT_MODELS[value]);
+  }
+
+  function switchRoute(value: "direct" | "backend") {
+    if (pending || value === greenptRoute) return;
+    if (messages.length && !window.confirm(t.switchProvider)) return;
+    setGreenptRoute(value); setMessages([]); setDraft(""); setError(null);
+    setApiKey(""); setBackendToken(""); setConsent(false); setModel(DEFAULT_MODELS.greenpt);
   }
 
   return (
@@ -196,15 +214,28 @@ export function App() {
                 <option value="claude">Claude (Anthropic)</option><option value="greenpt">GreenPT (EU)</option>
               </select>
             </label>
-            <label htmlFor="api-key">{providerNames[provider]} {t.keyTitle}
+            {provider === "greenpt" && configuredBackend && <label htmlFor="greenpt-route">{t.route}
+              <select id="greenpt-route" value={greenptRoute} disabled={pending}
+                onChange={(event) => switchRoute(event.target.value === "backend" ? "backend" : "direct")}>
+                <option value="direct">{t.directRoute}</option><option value="backend">{t.backendRoute}</option>
+              </select>
+            </label>}
+            {viaBackend ? <label htmlFor="backend-token">{t.backendToken}
+              <input id="backend-token" type="password" value={backendToken}
+                onChange={(event) => setBackendToken(event.target.value)} autoComplete="off"
+                spellCheck={false} disabled={pending || engine === "demo"} maxLength={300} />
+            </label> : <label htmlFor="api-key">{providerNames[provider]} {t.keyTitle}
               <input id="api-key" type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)}
                 placeholder={provider === "claude" ? t.keyPlaceholder : "sk-…"} autoComplete="off"
                 spellCheck={false} disabled={pending || engine === "demo"} maxLength={300} />
-            </label>
-            {apiKey && <button className="clear-key" disabled={pending} onClick={() => setApiKey("")}>{t.keyClear}</button>}
+            </label>}
+            {(apiKey || backendToken) && <button className="clear-key" disabled={pending}
+              onClick={() => { setApiKey(""); setBackendToken(""); }}>{t.keyClear}</button>}
           </div>
-          <p>{engine === "demo" ? t.demoNotice : t.keyHelp} {provider === "greenpt" && t.providerHelp}</p>
-          {engine === "live" && <small>{t.endpoint}: {PROVIDER_ENDPOINTS[provider]} · {DEFAULT_MODELS[provider]}</small>}
+          <p>{engine === "demo" ? t.demoNotice : viaBackend ? t.backendHelp : t.keyHelp}
+            {provider === "greenpt" && !viaBackend && t.providerHelp}</p>
+          {engine === "live" && <small>{viaBackend ? t.backendRoute : t.endpoint}: {viaBackend
+            ? `${configuredBackend}/api/chat` : PROVIDER_ENDPOINTS[provider]} · {!viaBackend && DEFAULT_MODELS[provider]}</small>}
         </section>
         <div className="chat-layout">
           <section className="conversation" aria-label={t.newChat}>
@@ -273,7 +304,7 @@ export function App() {
             <p className="metric-help">{t.estimateHelp}</p>
             <p className="metric-help">{t.estimatedOutput}</p>
             <button className="prompt-button" onClick={() => setShowPrompt(true)}>{t.prompt} <span>↗</span></button>
-            <p className="metric-help privacy-note">{engine === "demo" ? t.demoPrivacy : t.privacyDetail}</p>
+            <p className="metric-help privacy-note">{engine === "demo" ? t.demoPrivacy : viaBackend ? t.backendHelp : t.privacyDetail}</p>
           </aside>
         </div>
       </main>
