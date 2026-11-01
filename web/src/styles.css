@@ -221,6 +221,11 @@ summary:focus-visible { outline: 2px solid #9cbcad; outline-offset: 3px; }
 .demo-options .suggestions { margin-top: 12px; }
 .chat-layout { flex: 1; }
 .connection-gate { padding: 60px 24px; text-align: center; color: #65785a; line-height: 1.7; }
+.suggestion-chips { max-width: 720px; margin: 12px auto 24px; display: flex; flex-wrap: wrap; gap: 6px; }
+.suggestion-chips button { border: 1px solid #c7d3bf; border-radius: 18px; background: #f0f5e9; color: #435a37; padding: 6px 10px; font-size: .75rem; line-height: 1.4; text-align: left; }
+.suggestion-chips button:hover { background: #e4eddc; }
+.engine-toggle { max-width: 100%; }
+@media (max-width: 680px) { .topbar { flex-wrap: wrap; } }
 .conversation { min-height: 0; }
 .composer-area { width: 100%; margin: auto auto 0; }
 @media (max-width: 680px) {

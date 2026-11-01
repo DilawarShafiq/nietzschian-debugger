@@ -185,20 +185,14 @@ export function App() {
     setDemoTopics(initialDemoTopics);
   }
 
-  function switchEngine(value: "demo" | "live") {
-    if (pending || validating || value === engine) return;
-    if (messages.length && !window.confirm(t.switchEngine)) return;
-    setEngine(value); setMessages([]); setDraft(""); setError(null);
-    if (connectionPanel.current) connectionPanel.current.open = value === "live";
-    setDemoTopics(initialDemoTopics); setApiKey(""); setBackendToken(""); setConsent(false);
-    invalidateConnection();
-  }
-
-  function switchProvider(value: Provider) {
-    if (pending || validating || value === provider) return;
+  function switchChatMode(value: "demo" | Provider) {
+    if (pending || validating || value === (engine === "demo" ? "demo" : provider)) return;
     if (messages.length && !window.confirm(t.switchProvider)) return;
-    setProvider(value); setMessages([]); setDraft(""); setError(null);
-    setApiKey(""); setBackendToken(""); setConsent(false); setModel(DEFAULT_MODELS[value]);
+    setEngine(value === "demo" ? "demo" : "live");
+    if (value !== "demo") { setProvider(value); setModel(DEFAULT_MODELS[value]); }
+    if (connectionPanel.current) connectionPanel.current.open = value !== "demo";
+    setMessages([]); setDraft(""); setError(null); setDemoTopics(initialDemoTopics);
+    setApiKey(""); setBackendToken(""); setConsent(false);
     invalidateConnection();
   }
 
@@ -260,21 +254,17 @@ export function App() {
         <header className="topbar">
           <h1>{t.title}</h1>
           <select className="engine-toggle" id="chat-engine" aria-label={t.chatEngine}
-            value={engine} disabled={pending}
-            onChange={(event) => switchEngine(event.target.value === "live" ? "live" : "demo")}>
-            <option value="demo">Demo</option><option value="live">Live</option>
+            value={engine === "demo" ? "demo" : provider} disabled={pending || validating}
+            onChange={(event) => switchChatMode(event.target.value === "claude" ? "claude"
+              : event.target.value === "greenpt" ? "greenpt" : "demo")}>
+            <option value="demo">{t.demoMode}</option>
+            <option value="claude">Claude (Anthropic)</option><option value="greenpt">GreenPT (EU)</option>
           </select>
         </header>
         <div className="utility-panels">
         <details ref={connectionPanel} className="connection-panel">
           <summary>{t.connection}{engine === "live" ? ` · ${providerNames[provider]}` : ""}</summary>
           <div className="connection-fields">
-            <label htmlFor="provider">{t.provider}
-              <select id="provider" value={provider} disabled={pending || validating}
-                onChange={(event) => switchProvider(event.target.value === "greenpt" ? "greenpt" : "claude")}>
-                <option value="claude">Claude (Anthropic)</option><option value="greenpt">GreenPT (EU)</option>
-              </select>
-            </label>
             {provider === "greenpt" && configuredBackend && <label htmlFor="greenpt-route">{t.route}
               <select id="greenpt-route" value={greenptRoute} disabled={pending || validating}
                 onChange={(event) => switchRoute(event.target.value === "backend" ? "backend" : "direct")}>
@@ -330,6 +320,16 @@ export function App() {
           <section className="conversation" aria-label={t.newChat}>
             <div className="chat-scroll">
               {engine === "demo" && <p className="demo-status" role="note">{t.demoNotice}</p>}
+              <div className="suggestion-chips" aria-label={t.examples}>
+                {engine === "demo" ? demoTopics.map(topic => (
+                  <button key={topic} onClick={() => void send(topic)} disabled={pending}>
+                    {demoQuestions[topic].label[language]}
+                  </button>
+                )) : t.suggestions.map(suggestion => (
+                  <button key={suggestion} disabled={pending}
+                    onClick={() => { setDraft(suggestion); composer.current?.focus(); }}>{suggestion}</button>
+                ))}
+              </div>
               {messages.length === 0 ? <div className="welcome">
                 <div className="portrait-ring"><Avatar philosopher={philosopher} large /></div>
                 <span className="eyebrow">{partner.name} · {partner.description[language]}</span>
@@ -343,18 +343,6 @@ export function App() {
                     <MessageContent content={message.content} /></div>
                 </article>)}
               </div>}
-              <details key={`${engine}-${messages.length === 0}`} className="demo-options" open={messages.length === 0}>
-                <summary>{t.examples}</summary>
-                <div className="suggestions">{engine === "demo" ? demoTopics.map((topic, index) => (
-                  <button key={topic} onClick={() => void send(topic)}>
-                    <span className="suggestion-number">0{index + 1}</span>
-                    <span>{demoQuestions[topic].label[language]}</span><span>↗</span>
-                  </button>
-                )) : t.suggestions.map((suggestion, index) => <button key={suggestion}
-                  onClick={() => { setDraft(suggestion); composer.current?.focus(); }} disabled={pending}>
-                  <span className="suggestion-number">0{index + 1}</span><span>{suggestion}</span><span>↗</span>
-                </button>)}</div>
-              </details>
               {pending && <div className="thinking" role="status"><Avatar philosopher={philosopher} /><span>{t.waiting}</span><i /><i /><i /></div>}
               <div ref={lastMessage} />
             </div>

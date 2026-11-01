@@ -118,7 +118,7 @@ in die variabele. Draai daarna de workflow
 
 In de webapp:
 
-1. Kies **Live model** en **GreenPT**.
+1. Kies **GreenPT** in de gecombineerde modusdropdown bovenaan.
 2. Kies **Via ingestelde backend** (standaard als de URL geconfigureerd is).
 3. Plak het **backend-toegangstoken**, niet de GreenPT-sleutel.
 4. Klik **Verbinding valideren** (of druk Enter in het tokenveld). De backend controleert zijn GreenPT-sleutel en het ingestelde model via de modellen-API; dit is geen betaald proefgesprek. De live chat blijft verborgen tot deze controle slaagt.

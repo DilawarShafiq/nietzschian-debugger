@@ -484,7 +484,7 @@ Demo conversation text stays in page memory; it is not sent to a backend. Demo
 answers have a separate counter: chatrequests, model calls, and actual tokens
 remain zero. The token estimate is explicitly hypothetical in demo mode.
 
-Select **Live model** for direct browser calls, locally or on GitHub Pages.
+Select **Claude** or **GreenPT** in the combined mode dropdown for live calls, locally or on GitHub Pages.
 No separate backend, server-side key, or repository variable is required.
 Select **Claude** or **GreenPT** and enter that provider's key in the top connection
 panel. Switching provider clears the conversation and key to prevent accidentally
@@ -527,7 +527,7 @@ npm start
 ```
 
 Markdown responses render as formatted text, lists, emphasis, code, and tables.
-The chat-first layout keeps four partners, language selection, Demo/Live and a spacious composer visible. Connection settings and token counters are collapsed under **Connection** and **Usage**; background information, the system prompt and attribution remain accessible under **About this demo** and **About & sources**. Examples start expanded and collapse after the first message.
+The chat-first layout keeps four partners, language selection and a spacious composer visible. One dropdown combines **Demo mode (no token needed)**, **Claude** and **GreenPT**. Connection settings and token counters are collapsed under **Connection** and **Usage**; background information, the system prompt and attribution remain accessible under **About this demo** and **About & sources**. Compact suggestion chips sit above the conversation; new messages append below them.
 Live chat is hidden until you explicitly validate the connection (button or Enter in the key field). Validation checks authentication and configured model availability through the provider's models API, without a paid test completion. Editing or clearing a key, or switching provider/route/engine, invalidates that check. Backend mode validates the server's provider key using authenticated `POST /api/validate`. Successful validation is not a guarantee of future quota or completion permissions; those errors remain explicit.
 Raw HTML is disabled, unsafe link protocols are filtered, and embedded remote images
 are not loaded. The composer uses larger text, a resizable multiline input, and
