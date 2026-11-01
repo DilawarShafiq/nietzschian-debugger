@@ -1,4 +1,20 @@
-# Nietzschian Debugger
+# Nietzschian Diagnoser — AI Clinician
+
+An educational Dutch/English reflection app for questioning assumptions and potentially harmful biases in clinical reasoning. It asks questions rather than providing diagnoses or treatment advice. Use fictional or de-identified practice cases only.
+
+**[Open the web app on GitHub Pages](https://bartvanderwal.github.io/nietzschian-diagnoser/)** · [Run the web app locally](#webdemo-nietzschian-ai-clinician-fork-only) · [GreenPT VPS backend manual](web/BACKEND-HANDLEIDING.md)
+
+![Published GitHub Pages UI: Karl Popper in a Dutch scripted reflection conversation, with provider settings and token counters](assets/clinician-pages.png)
+
+*Screenshot of the published GitHub Pages app in scripted demo mode. No live model calls or patient data. Karl Popper photograph: [LSE Library / Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Karl_Popper.jpg), via Flickr Commons (no known copyright restrictions); displayed with circular cropping.*
+
+## Original project and attribution
+
+This fork is based on **[Nietzschian Debugger by Dilawar Shafiq](https://github.com/DilawarShafiq/nietzschian-debugger)**, licensed under [MIT](LICENSE). The original project applies philosophical questioning to code debugging; this fork adds a bilingual clinical-reflection web UI, scripted examples, four philosophical partners, and Claude/GreenPT integration. These additions are adaptations, not clinical validation or an endorsement by the original author.
+
+The Python debugging documentation below is retained for the original CLI. **`pip install nietzschian-debugger` installs the original package, not this fork's web app.** To run this fork, clone this repository and follow the [web app instructions](#webdemo-nietzschian-ai-clinician-fork-only).
+
+## Original Nietzschian Debugger CLI
 
 ![Nietzschian Debugger: the debugger that hands the question back](assets/banner.png)
 
