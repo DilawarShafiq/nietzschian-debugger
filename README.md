@@ -433,7 +433,126 @@ pytest
 nietzschian debug "test problem"
 ```
 
-## Tech Stack
+## Webdemo: Nietzschian AI Clinician (fork only)
+
+The fork includes a React chat interface with Dutch/English UI and **two explicit
+system prompts**, combined with Socrates, Nietzsche, or Zarathustra mode instructions.
+Generated portraits change with the selected partner. You can inspect the active
+prompt in the UI. This is an educational reflection demo, not a clinician, medical
+device, diagnostic system, or treatment recommender.
+
+### Run locally
+
+```bash
+cd web
+npm ci
+# Optional: create web/.env and set ANTHROPIC_API_KEY and CLAUDE_MODEL.
+# A server-side key in the repository's existing .env is also supported locally.
+npm run dev
+# Open http://127.0.0.1:3080
+```
+
+The app starts in **Scripted demo** mode. Suggested topics produce fixed,
+philosopher-specific reflection questions in Dutch or English, with follow-up
+choices after each answer. The themes include working hypotheses, counterevidence,
+interdisciplinary perspectives, uncertainty, longitudinal evaluation, and human
+responsibility. They illustrate the research concept, not a validated clinical
+protocol or a claim of improved patient outcomes.
+
+Free text receives an explicit notice that no actual LLM integration is running.
+Demo conversation text stays in page memory; it is not sent to a backend. Demo
+answers have a separate counter: chatrequests, Claude calls, and actual tokens
+remain zero. The token estimate is explicitly hypothetical in demo mode.
+
+Select **Live Claude** to use the backend locally, or with a configured separate
+backend. This option is unavailable on GitHub Pages without a backend URL.
+Then enter your Claude API key in the UI. It stays only in page memory
+and is sent to the Express backend in the JSON body of `POST /api/chat`. It is not
+saved in browser storage or echoed in responses. Use only a backend you trust:
+its operator and browser scripts/extensions can access the key. Clearing the field
+or refreshing forgets it; that does not erase provider-side records. Never put keys
+in `VITE_` variables, source files, GitHub Pages builds, or URLs.
+
+Live mode uses the real Anthropic SDK, not canned demo responses. The default
+model is `claude-haiku-4-5-20251001`; override it with `CLAUDE_MODEL`. Calls may incur
+charges. Invalid keys, missing configuration, provider errors, and rate limits are
+shown explicitly. A response failing question/advice heuristics is retried once;
+this is not a clinical safety guarantee. No conversations are persisted by this app.
+Use fictional or de-identified practice cases only, and an approved provider.
+
+Counters show browser chat requests (including failures), Claude call attempts
+reported by the backend, and actual input/output/cache tokens returned by Claude.
+Retry usage is included. Failed requests can have unknown usage. The next-input
+estimate uses characters divided by four plus message overhead, including the
+prompt and full conversation history; it is **not an exact Claude tokenizer**.
+Output is capped at 512 tokens per provider call. Conversation size is capped
+explicitly; it is never silently truncated. Counters reset on page reload, not on
+starting a new conversation. Static-asset requests and CORS preflights are excluded.
+
+```bash
+npm test
+npm run build
+npm start
+```
+
+Tests use an injected fake provider and never spend Claude credits. The server binds
+to `127.0.0.1` by default, limits calls to 20 requests per IP per ten minutes, and
+does not log prompts or keys. This demo has **no authentication**: do not expose
+a paid server key publicly. CORS is not authentication or an abuse-prevention system.
+
+### GitHub Pages: scripted demo without a server
+
+The static demo needs **no API key, Express host, or repository variable**.
+In Settings > Pages select **GitHub Actions**. The
+`Clinician demo on GitHub Pages (fork only)` workflow tests and builds the frontend
+and deploys `web/dist/client` on web/workflow changes pushed to `main` or
+`feature/psychology-reflection`, or on manual dispatch.
+
+The workflow is restricted to `bartvanderwal/nietzschian-diagnoser` and uses the
+`/nietzschian-diagnoser/` asset base path. It does not publish the research proposal,
+server source, environment files, or API keys.
+
+Expected URL: <https://bartvanderwal.github.io/nietzschian-diagnoser/>.
+
+### Optional: GitHub Pages frontend + separate Express backend
+
+GitHub Pages cannot run Express. Deploy the Node backend separately with HTTPS,
+install dependencies with `npm ci`, build with `npm run build`, and run `npm start`
+from the web directory. Configure:
+
+```text
+HOST=0.0.0.0
+PORT=3080
+FRONTEND_ORIGIN=https://bartvanderwal.github.io
+ALLOW_SERVER_KEY=false
+CLAUDE_MODEL=claude-haiku-4-5-20251001
+```
+
+With `FRONTEND_ORIGIN` configured, visitors must supply their own temporary key
+unless `ALLOW_SERVER_KEY=true` is explicitly enabled. Only the configured origin
+and same-origin clients receive browser access. Use HTTPS end-to-end. Configure
+your hosting proxy not to record request bodies, and add authentication and proper
+operator-managed quotas before a public/production deployment.
+
+To enable live Claude on Pages, set the fork's repository variable `CLINICIAN_API_URL` to the HTTPS
+backend URL (no `/api/chat` suffix). In Settings > Pages select **GitHub Actions**,
+then manually run the **Clinician demo on GitHub Pages (fork only)** workflow from
+the feature branch. It publishes only `web/dist/client`, never server files or keys.
+Leave this variable unset for the server-free scripted demo. The workflow does
+not provision a live backend.
+
+For a manual static build:
+
+```bash
+BASE_PATH=/nietzschian-diagnoser/ npm run build
+# Optional live backend:
+# BASE_PATH=/nietzschian-diagnoser/ \
+# VITE_API_BASE_URL=https://your-backend.example.com npm run build
+```
+
+The local Python CLI and separate upstream security PR are unaffected.
+
+## Python Tech Stack
 
 - Python >= 3.10
 - Claude API via the Anthropic SDK
