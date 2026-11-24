@@ -2,6 +2,7 @@
 
 ![Nietzschian Debugger: the debugger that hands the question back](assets/banner.png)
 
+[![tests](https://github.com/DilawarShafiq/nietzschian-debugger/actions/workflows/tests.yml/badge.svg)](https://github.com/DilawarShafiq/nietzschian-debugger/actions/workflows/tests.yml)
 [![PyPI](https://img.shields.io/pypi/v/nietzschian-debugger)](https://pypi.org/project/nietzschian-debugger/)
 [![Python](https://img.shields.io/pypi/pyversions/nietzschian-debugger)](https://pypi.org/project/nietzschian-debugger/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -419,6 +420,18 @@ pytest
 # Run the CLI locally
 nietzschian debug "test problem"
 ```
+
+## Contributing
+
+Contributions are welcome, from a typo to a new lens. Start with
+[CONTRIBUTING.md](CONTRIBUTING.md), then pick an issue labelled
+[`good first issue`](https://github.com/DilawarShafiq/nietzschian-debugger/labels/good%20first%20issue)
+or [`help wanted`](https://github.com/DilawarShafiq/nietzschian-debugger/labels/help%20wanted).
+Questions and ideas go in [Discussions](https://github.com/DilawarShafiq/nietzschian-debugger/discussions).
+
+<a href="https://github.com/DilawarShafiq/nietzschian-debugger/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=DilawarShafiq/nietzschian-debugger" alt="Contributors" />
+</a>
 
 ## Tech Stack
 

@@ -1,0 +1,49 @@
+name: Bug report
+description: Something is broken, crashes, or behaves differently than documented.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. A good report gets fixed fast.
+        If the tool *gave you an answer* instead of a question, that's a bug too. Paste the turn below.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you ran, what you expected, and what you got instead.
+      placeholder: |
+        $ nietzschian debug --model openai:gpt-4o "..."
+        Error: ...
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: The smallest set of steps that shows the problem.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `nietzschian --version`
+      placeholder: "0.5.3"
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Model / provider
+      description: e.g. Claude (default), `openai:gpt-4o`, `ollama:qwen2.5-coder`
+  - type: input
+    id: environment
+    attributes:
+      label: OS and Python version
+      placeholder: "Windows 11, Python 3.13"
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Logs, a suggested fix, or a link to a branch. Please remove API keys from anything you paste.
