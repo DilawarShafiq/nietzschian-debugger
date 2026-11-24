@@ -17,3 +17,12 @@ class TestErrorOutput:
 
     def test_error_console_targets_stderr(self) -> None:
         assert renderer.error_console.stderr is True
+
+    def test_display_error_keeps_bracketed_text(self, capsys) -> None:
+        # Issue #7: Rich read '[providers]' as markup and silently dropped it.
+        renderer.display_error("pip install nietzschian-debugger[providers]")
+        assert "[providers]" in capsys.readouterr().err
+
+    def test_display_error_survives_closing_tag_lookalike(self) -> None:
+        # Issue #7: '[/tmp]' in an exception message raised MarkupError.
+        renderer.display_error("could not write [/tmp] file")

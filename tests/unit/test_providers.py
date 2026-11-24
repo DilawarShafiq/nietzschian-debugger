@@ -48,3 +48,16 @@ def test_unknown_name_stays_on_anthropic() -> None:
 def test_estimate_tokens_is_nonnegative() -> None:
     n = providers.estimate_tokens("system prompt", [{"role": "user", "content": "hello there"}])
     assert isinstance(n, int) and n >= 0
+
+
+def test_openai_uses_max_completion_tokens() -> None:
+    # Issue #7: newer OpenAI models reject 'max_tokens' with HTTP 400.
+    providers.configure("openai:gpt-4o")
+    assert providers._limit(1024) == {"max_completion_tokens": 1024}
+
+
+@pytest.mark.parametrize("spec", ["ollama:llama3", "groq:llama-3.1-8b-instant"])
+def test_compatible_servers_keep_max_tokens(spec: str) -> None:
+    # OpenAI-compatible servers vary; they keep the widely-supported 'max_tokens'.
+    providers.configure(spec)
+    assert providers._limit(1024) == {"max_tokens": 1024}

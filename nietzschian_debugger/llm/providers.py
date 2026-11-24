@@ -108,7 +108,9 @@ def _client():
     except ImportError as exc:  # pragma: no cover - import-time guard
         raise ProviderError(
             f"The '{_provider}' provider needs the 'openai' package: "
-            "pip install nietzschian-debugger[providers]"
+            "pip install 'nietzschian-debugger[providers]' "
+            "(uv: uv tool install 'nietzschian-debugger[providers]'; "
+            "pipx: pipx inject nietzschian-debugger openai)"
         ) from exc
     key_env = _KEY_ENVS[_provider]
     api_key = os.environ.get(key_env) if key_env else None
@@ -123,6 +125,17 @@ def _client():
     return _client_obj
 
 
+def _limit(tokens: int) -> dict[str, int]:
+    """Output-token cap keyword for the active provider.
+
+    OpenAI's newer models reject 'max_tokens' and its API accepts
+    'max_completion_tokens' for every chat model. Other OpenAI-compatible
+    servers (Ollama, LM Studio, vLLM, ...) vary, so they keep 'max_tokens'.
+    """
+    key = "max_completion_tokens" if _provider == "openai" else "max_tokens"
+    return {key: tokens}
+
+
 def _msgs(system: str, messages: list[dict[str, str]]) -> list[dict[str, str]]:
     return [{"role": "system", "content": system}, *messages]
 
@@ -135,7 +148,7 @@ def stream(system: str, messages: list[dict[str, str]], model: str, callbacks) -
             model=model or _model,
             messages=_msgs(system, messages),
             stream=True,
-            max_tokens=1024,
+            **_limit(1024),
         )
         for chunk in response:
             choices = getattr(chunk, "choices", None)
@@ -155,7 +168,7 @@ def complete(system: str, messages: list[dict[str, str]], model: str) -> str:
     response = client.chat.completions.create(
         model=model or _model,
         messages=_msgs(system, messages),
-        max_tokens=1024,
+        **_limit(1024),
     )
     choices = getattr(response, "choices", None)
     return (choices[0].message.content or "") if choices else ""

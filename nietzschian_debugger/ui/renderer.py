@@ -7,6 +7,7 @@ import sys
 from contextlib import contextmanager
 
 from rich.console import Console
+from rich.markup import escape
 from rich.text import Text
 
 console = Console()
@@ -93,7 +94,7 @@ def display_dim(message: str) -> None:
 
 def display_error(message: str) -> None:
     """Display an error message on stderr."""
-    error_console.print(f"[bold red]Error:[/bold red] [red]{message}[/red]")
+    error_console.print(f"[bold red]Error:[/bold red] [red]{escape(message)}[/red]")
 
 
 def display_warning(message: str) -> None:
