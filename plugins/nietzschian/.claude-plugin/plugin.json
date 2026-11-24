@@ -1,0 +1,10 @@
+{
+  "name": "nietzschian",
+  "version": "0.5.3",
+  "description": "Nietzsche output style: never hands over the fix, asks exactly one question per turn through an adaptive Socrates / Nietzsche / Zarathustra lens.",
+  "author": { "name": "Dilawar Shafiq" },
+  "homepage": "https://github.com/DilawarShafiq/nietzschian-debugger",
+  "repository": "https://github.com/DilawarShafiq/nietzschian-debugger",
+  "license": "MIT",
+  "keywords": ["debugging", "socratic", "learning", "output-style"]
+}

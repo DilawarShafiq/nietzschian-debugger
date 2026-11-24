@@ -85,3 +85,30 @@ def test_execution_captures_a_raise() -> None:
     out = predict.execute_call(syspath, module, "get_fallback_question", ["not-a-real-intensity"])
     assert out["stage"] == "ran"
     assert "raised" in out  # KeyError on the unknown intensity
+
+
+class TestChildEnvironment:
+    # Issue #4: predict runs the user's code; it must not inherit the API keys
+    # this tool itself runs on.
+    def test_secrets_are_stripped(self, monkeypatch) -> None:
+        for name in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GITHUB_TOKEN",
+                     "AWS_ACCESS_KEY_ID", "DB_PASSWORD", "NIETZSCHIAN_BASE_URL"):
+            monkeypatch.setenv(name, "secret-value")
+        env = predict._child_env()
+        assert "secret-value" not in env.values()
+
+    def test_ordinary_variables_are_kept(self, monkeypatch) -> None:
+        monkeypatch.setenv("MY_APP_MODE", "dev")
+        env = predict._child_env()
+        assert env["MY_APP_MODE"] == "dev"
+        assert "PATH" in {k.upper() for k in env}
+        assert env["PYTHONUTF8"] == "1"
+
+    def test_user_code_cannot_read_the_api_key(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-should-not-leak")
+        (tmp_path / "peek.py").write_text(
+            "import os\ndef peek():\n    return os.environ.get('ANTHROPIC_API_KEY')\n",
+            encoding="utf-8",
+        )
+        out = predict.execute_call(str(tmp_path), "peek", "peek", [])
+        assert out == {"stage": "ran", "returned": "None"}

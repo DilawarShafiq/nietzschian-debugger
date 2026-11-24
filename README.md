@@ -44,6 +44,25 @@ nietzschian demo
 - Python >= 3.10
 - An Anthropic API key (BYOK) — *or* bring another model (OpenAI, Gemini, DeepSeek, …), or run a local **Ollama** model, which needs no key. See [Models — set one up, switch any time](#models--set-one-up-switch-any-time).
 
+### In Claude Code — no API key needed
+
+On a Claude Pro, Max, Team or Enterprise plan? Install it as a Claude Code plugin
+and it runs on the account you're already signed in with:
+
+```
+/plugin marketplace add DilawarShafiq/nietzschian-debugger
+/plugin install nietzschian@nietzschian-debugger
+```
+
+Then switch to it with `/output-style` (or `/config` → Output style) and describe
+your bug. It can read your repo and `git diff` itself, so its questions point at
+real lines. Back to normal: `/output-style default`.
+
+> The plugin is the debugger's voice as an output style. It asks the model to hold
+> the one-question, no-answers rule; the CLI *enforces* it with a validator, and
+> adds the quote corpus, sessions, growth scoring, `predict` and `roast`.
+> Output style contributed by [Eluvade](https://github.com/Eluvade) (#3).
+
 ## Setup
 
 Set your Anthropic API key:
@@ -335,6 +354,12 @@ it is the whole argument.
 > It runs your code in a separate process with a timeout — your own functions, called
 > the way you'd call them. It only picks functions it can invoke with simple literal
 > arguments, and a function that raises is a legitimate answer (predict that too).
+>
+> **It is not a sandbox.** The code runs on your machine with your permissions: it
+> can read your files and use the network, exactly as if you ran it yourself. API
+> keys, tokens and other secret-looking environment variables are stripped before
+> it starts, so an import can't read the key this tool runs on. Only point
+> `predict` at code you trust; for untrusted code, use a throwaway VM or container.
 
 ## Roast Your Code — `roast`
 

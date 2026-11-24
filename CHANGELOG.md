@@ -2,6 +2,31 @@
 
 All notable changes to this project are documented here.
 
+## [0.5.3] — 2026-11-25
+
+### Added
+- **Claude Code plugin — no API key needed.** The repo is now a Claude Code
+  marketplace: `/plugin marketplace add DilawarShafiq/nietzschian-debugger`, then
+  `/plugin install nietzschian@nietzschian-debugger`, and pick the *Nietzsche*
+  output style. Runs on a Pro/Max/Team/Enterprise plan with no key. Output style
+  contributed by Eluvade (#3).
+
+### Fixed
+- **OpenAI's newer models work.** The `openai` provider now sends
+  `max_completion_tokens`; those models reject `max_tokens` with HTTP 400.
+  OpenAI-compatible servers (Ollama, LM Studio, vLLM, …) keep `max_tokens`.
+  Reported with a fix by Joanes-Iri (#7).
+- **Error messages keep bracketed text.** `display_error` no longer reads the
+  message as Rich markup, so `[providers]` in an install hint survives and a
+  `[/tmp]` in an exception no longer crashes the error path (#7).
+- The missing-`openai` hint now also shows the `uv tool` and `pipx` commands.
+
+### Security
+- **`predict` no longer passes your secrets to the code it runs.** API keys,
+  tokens, passwords and other secret-looking variables are stripped from the
+  child process's environment. The CLI and README now say plainly that `predict`
+  is not a sandbox. Raised by bartvanderwal (#4).
+
 ## [0.5.2] — 2026-10-28
 
 ### Added

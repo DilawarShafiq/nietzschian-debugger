@@ -6,8 +6,10 @@ and names the gap between what you believed and what the code does. At the end, 
 Proof-of-Understanding report names the *pattern* in your misses — not a score, a
 pattern. "You keep missing early returns" is worth more than "73%".
 
-Execution runs in a separate Python process with a timeout — your own code, run
-the way you'd run it yourself.
+Execution runs in a separate Python process with a timeout. It is NOT a sandbox:
+the code can read your files and use the network, exactly as if you ran it
+yourself. Secrets (API keys, tokens, passwords) are stripped from the child's
+environment so a stray import can't read the key this tool runs on.
 """
 
 from __future__ import annotations
@@ -117,11 +119,31 @@ except Exception:
 """
 
 
+# Environment variables whose names look secret are not passed to the child.
+_SECRET_NAME = re.compile(
+    r"KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|AUTH|COOKIE|SESSION|PRIVATE",
+    re.IGNORECASE,
+)
+_SECRET_PREFIXES = ("AWS_", "AZURE_", "GOOGLE_APPLICATION_", "GH_", "GITHUB_", "NIETZSCHIAN_")
+
+
+def _child_env() -> dict[str, str]:
+    """The caller's environment minus anything that looks like a secret."""
+    env = {
+        name: value
+        for name, value in os.environ.items()
+        if not _SECRET_NAME.search(name) and not name.upper().startswith(_SECRET_PREFIXES)
+    }
+    env["PYTHONUTF8"] = "1"
+    env["PYTHONIOENCODING"] = "utf-8"
+    return env
+
+
 def _run_subprocess(script: str, payload: dict) -> dict | None:
     # Force the child to UTF-8 and decode its output as UTF-8 with errors replaced,
     # so code that prints emoji or accented text can't crash the reader with a
     # Windows cp1252 UnicodeDecodeError. We only parse our own ASCII JSON line.
-    child_env = {**os.environ, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"}
+    child_env = _child_env()
     try:
         proc = subprocess.run(
             [sys.executable, "-c", script],
@@ -338,6 +360,11 @@ def predict_command(file_path: str, rounds: int = 3) -> None:
 
     console.print("\n[bold cyan]Nietzschian Debugger[/bold cyan] [dim][predict mode][/dim]\n")
 
+    display_dim(
+        "predict runs functions from this file on your machine. It is not sandboxed: "
+        "the code can read files and use the network. Secrets are stripped from its "
+        "environment. Only run code you trust."
+    )
     rounds = max(1, min(rounds, _MAX_ROUNDS))
     display_dim(f"{rounds} rounds — type 'quit' (or press Ctrl+C) to stop early.\n")
     avoid: list[str] = []
