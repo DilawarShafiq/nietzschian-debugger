@@ -44,14 +44,5 @@ coverage/
 # Legacy (Node.js)
 node_modules/
 
-# Local machine config (per-machine; contains absolute paths)
-.claude/settings.local.json
-
 # PyPI credentials (never commit)
 *.pypirc
-
-# AI dev-process files (kept local, not published)
-CLAUDE.md
-.claude/
-.specify/
-history/
