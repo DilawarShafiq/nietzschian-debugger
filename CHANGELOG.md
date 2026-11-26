@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here.
 
+## [Unreleased]
+
+### Fixed
+- **`predict` gives a fumbled dare a firmer second chance.** When a model returns
+  nothing, prose without a `CALL:`, bad JSON (or `args` that isn't a list), or a
+  function that isn't callable or was already used, it is asked again with a note
+  naming that exact mistake, and a rejected function joins the avoid list. After
+  three tries the round ends with one calm line instead of silently (#13).
+
 ## [0.5.3] — 2026-11-25
 
 ### Added
