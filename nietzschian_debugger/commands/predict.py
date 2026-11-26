@@ -221,41 +221,96 @@ def _parse_match(text: str) -> tuple[bool | None, str]:
     return m.group(1).lower() == "yes", text[m.end():].lstrip("\n .")
 
 
-def _run_round(code: str, file_path: str, model: str, syspath: str, module: str, avoid: list[str]) -> dict | None:
-    """One dare → guess → executed truth → verdict. Returns the round result or None
-    (developer quit, or no runnable dare could be found)."""
-    avoid_note = (
-        f"\n\nDo NOT choose any of these functions (already used): {', '.join(avoid)}."
-        if avoid
-        else ""
-    )
-    user_msg = f"The file ({file_path}):\n\n{code[:_MAX_CODE_CHARS]}{avoid_note}"
+_DARE_ATTEMPTS = 3  # the first ask, then two firmer retries
 
-    dare: str | None = None
-    call: dict | None = None
-    retry = ""
-    for _ in range(3):
+_FIRM_NOTES = {
+    "empty": "Your last answer was empty.",
+    "no_call": "Your last answer had no CALL: line.",
+    "bad_call": (
+        "Your last CALL: line was not valid one-line JSON of the shape "
+        '{{"function": "<name>", "args": [...]}} with args as a JSON list.'
+    ),
+    "not_callable": "`{name}` is not a directly callable top-level function of this file.",
+    "used": "`{name}` was already used.",
+    "no_dare": "Your last answer had a CALL: line but no DARE: to go with it.",
+}
+
+_GAVE_UP = (
+    "This model could not lay a runnable dare on this file, even when pressed — so no "
+    "round this time. Try again, or a coding model (e.g. ollama:qwen2.5-coder or claude)."
+)
+
+
+def _check_dare(raw: str, dare: str, call: dict | None, avoid: list[str], syspath: str, module: str) -> str | None:
+    """Why a dare can't be used (a _FIRM_NOTES key), or None when it is runnable."""
+    if not (raw or "").strip():
+        return "empty"
+    if not re.search(r"CALL:", raw):
+        return "no_call"
+    if (
+        not isinstance(call, dict)
+        or not isinstance(call.get("function"), str)
+        or not call["function"].strip()
+        or not isinstance(call.get("args", []), list)
+    ):
+        return "bad_call"
+    if not dare.strip():
+        return "no_dare"
+    if call["function"] in avoid:
+        return "used"
+    if not is_callable_top_level(syspath, module, call["function"]):
+        return "not_callable"
+    return None
+
+
+def _firm_note(reason: str, name: str = "") -> str:
+    return (
+        "\n\nYour last answer broke the rules: "
+        + _FIRM_NOTES[reason].format(name=name)
+        + " Choose a plain, unused module-level function of this file and output EXACTLY "
+        "the two lines DARE: and CALL:, nothing else."
+    )
+
+
+def _ask_dare(
+    code: str, file_path: str, model: str, syspath: str, module: str, avoid: list[str]
+) -> tuple[str, dict] | None:
+    """Ask for a dare until one names a runnable call. Each failed attempt is retried
+    with a firmer note, and a rejected function name joins the avoid list so it isn't
+    picked again. None when every attempt failed (or the model call raised)."""
+    rejected: list[str] = []
+    firm = ""
+    for _ in range(_DARE_ATTEMPTS):
+        banned = list(avoid) + [n for n in rejected if n not in avoid]
+        why = "already used or not callable" if rejected else "already used"
+        avoid_note = f"\n\nDo NOT choose any of these functions ({why}): {', '.join(banned)}." if banned else ""
+        user_msg = f"The file ({file_path}):\n\n{code[:_MAX_CODE_CHARS]}{avoid_note}"
         try:
             with thinking():
-                raw = call_llm(DARE_SYSTEM + retry, [{"role": "user", "content": user_msg}], model)
+                raw = call_llm(DARE_SYSTEM + firm, [{"role": "user", "content": user_msg}], model)
         except Exception as error:
             display_error(f"predict ended unexpectedly: {error}")
             return None
-        parsed_dare, parsed_call = _parse_dare(raw)
-        if (
-            parsed_call
-            and parsed_call.get("function")
-            and parsed_call["function"] not in avoid
-            and is_callable_top_level(syspath, module, parsed_call["function"])
-        ):
-            dare, call = parsed_dare, parsed_call
-            break
-        retry = (
-            "\n\nYour previous pick was not a directly callable top-level function, "
-            "or was already used. Choose a plain, unused module-level function."
-        )
-    if not call:
+        raw = raw or ""
+        dare, call = _parse_dare(raw)
+        reason = _check_dare(raw, dare, call, banned, syspath, module)
+        if reason is None:
+            return dare, call
+        name = call["function"] if reason in ("used", "not_callable") else ""
+        if name and name not in rejected:
+            rejected.append(name)
+        firm = _firm_note(reason, name)
+    display_dim(_GAVE_UP)
+    return None
+
+
+def _run_round(code: str, file_path: str, model: str, syspath: str, module: str, avoid: list[str]) -> dict | None:
+    """One dare → guess → executed truth → verdict. Returns the round result or None
+    (developer quit, or no runnable dare could be found)."""
+    asked = _ask_dare(code, file_path, model, syspath, module, avoid)
+    if asked is None:
         return None
+    dare, call = asked
 
     new_line()
     print(dare)
